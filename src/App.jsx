@@ -1,12 +1,14 @@
-import AllProductsPage from '../pages/AllProductsPage'
-import HomePage from '../pages/HomePage'
-import ManagerViewPage from '../pages/ManagerViewPage'
+import AllCustomersPage from './pages/AllCustomersPage'
+import HomePage from './pages/HomePage'
+import ManagerViewPage from './pages/ManagerViewPage'
+import CustomerPage from './pages/CustomerPage'
+import CreateCustomerPage from './pages/CreateCustomerPage'
 import Navbar from './components/Navbar'
 
 import { Routes, Route } from 'react-router-dom'
-import ProductPage from '../pages/ProductPage'
 import './App.css'
-import ArchivesPage from '../pages/ArchivesPage'
+import EditCustomerPage from './pages/EditCustomerPage'
+
 
 function App() {
 
@@ -16,9 +18,10 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/managerview" element={<ManagerViewPage />} />
-        <Route path="/products" element={<AllProductsPage />} />
-        <Route path="/products/:id" element={<ProductPage />} />
-        <Route path="/managerview/archives" element={<ArchivesPage />} />
+        <Route path="/customers" element={<AllCustomersPage />} />
+        <Route path="/customers/:customerId" element={<CustomerPage />} />
+        <Route path="/customers/:customerId/edit" element={<EditCustomerPage />} />
+        <Route path="/customers/create" element={<CreateCustomerPage />} />
       </Routes>
     </>
   )
