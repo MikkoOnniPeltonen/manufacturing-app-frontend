@@ -8,7 +8,6 @@ function AllCustomersPage() {
   const [customerList, setCustomerList] = useState([])
   const [customerSales, setCustomerSales] = useState([])
 
-
   async function fetchCustomerData() {
 
     try {

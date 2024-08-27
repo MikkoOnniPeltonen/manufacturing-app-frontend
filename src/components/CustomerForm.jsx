@@ -2,18 +2,27 @@
 import axios from 'axios'
 import { useState, useEffect } from "react"
 import Select from 'react-select'
+import { useForm } from 'react-hook-form'
 
 
 
-function CustomerForm({ onSubmit, customerData, buttonText }) {
+function CustomerForm({ onSubmit, customerData={}, buttonText }) {
+
+    const { 
+        register, 
+        handleSubmit,
+    } = useForm({ defaultValues: customerData,
+        resolver: ({ values }) => ({
+            name: values.name,
+            customer_logoURL: values.logo,
+            contact: values.contact,
+            address: values.address,
+            selected_products: values.selectedProducts,
+            delivered: values.delivered || [],
+        })
+     })
 
     const [productList, setProductList] = useState([])
-    
-    const [customerName, setCustomerName] = useState(customerData?.name || "")
-    const [customerLogo, setCustomerLogo] = useState(customerData?.customer_logoURL || "")
-    const [contactInfo, setContactInfo] = useState(customerData?.contact || "")
-    const [customerAddress, setCustomerAddress] = useState(customerData?.address || "")
-    const [selectedProducts, setSelectedProducts] = useState(customerData?.selected_products || [])
 
     useEffect(() => {
         axios.get(`${import.meta.env.VITE_BACKEND_URL}/products`)
@@ -32,51 +41,49 @@ function CustomerForm({ onSubmit, customerData, buttonText }) {
         label: oneProduct.name
     }))
 
-    const handleSelectChange = (selectedOptions) => {
-        setSelectedProducts(selectedOptions)
-    }
-
-
-    function handleSubmit(e) {
-        e.preventDefault()
-
-        const customer = {
-            name: customerName,
-            customer_logoURL: customerLogo,
-            contact: contactInfo,
-            address: customerAddress,
-            selected_products: selectedProducts
-        }
-
-        onSubmit(customer)
-    }
-
   return (
-    <form onSubmit={handleSubmit}>
-        <label>
+    <form onSubmit={handleSubmit(onSubmit)}>
+        <label htmlFor='name'>
             Name
-            <input type="text" value={customerName} onChange={(e) => {setCustomerName(e.target.value)}}/>
+            <input type="text" 
+                {...register('name', { required: true })}
+                placeholder='Enter Customer Name'
+                id='name'
+            />
         </label>
-        <label>
+        <label htmlFor='logo'>
             Brand Logo
-            <input type="text" value={customerLogo} onChange={(e) => {setCustomerLogo(e.target.value)}}/>
+            <input type="text" 
+                {...register('logo', { required: true })}
+                placeholder='Enter Customer logo URL'
+                id='logo'
+            />
         </label>
-        <label>
+        <label htmlFor='contact'>
             Contact
-            <input type="text" value={contactInfo} onChange={(e) => {setContactInfo(e.target.value)}}/>
+            <input type="text"
+                {...register('contact', { required: true })}
+                placeholder='Enter Customer Contact info'
+                id='contact'
+            />
         </label>
-        <label>
+        <label htmlFor='address'>
             Address
-            <input type="text" value={customerAddress} onChange={(e) => {setCustomerAddress(e.target.value)}}/>
+            <input type="text" 
+                {...register('address', { required: true })}
+                placeholder='Enter Customer address'
+                id='address'
+            />
         </label>
-        <label>
+        <label htmlFor='selectedProducts'>
             Products
             <Select 
-            isMulti
-            name="products"
-            options={options}
-            value={selectedProducts}
-            onChange={handleSelectChange}
+                isMulti
+                name="selectedProducts"
+                options={options}
+                {...register('selectedProducts', { required: true })}
+                placeholder='Select products'
+                id='selectedProducts'
             />
         </label>
         <button>{buttonText}</button>

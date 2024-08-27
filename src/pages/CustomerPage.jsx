@@ -26,7 +26,7 @@ function CustomerPage() {
       {customer && (
         <div>
           <div>
-            <img src={customer.customer_logoURL} alt={`${customer.name} logo`}/>
+            <img src={customer.customer_logoURL} alt={`pic not loading`}/>
             <h1>{customer.name}</h1>
             <div>
               <h5>{customer.contact}</h5>
@@ -37,7 +37,7 @@ function CustomerPage() {
             <ul>
               {customer.selected_products && (customer.selected_products.map((oneSelectedProduct) => {
                 return(
-                  <li key={oneSelectedProduct.id}>{oneSelectedProduct.name}</li>
+                  <li key={oneSelectedProduct.value}>{oneSelectedProduct.label}</li>
                 )
               }))}
             </ul>
