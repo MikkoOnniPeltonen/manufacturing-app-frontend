@@ -23,12 +23,12 @@ function Navbar() {
     if (customerId) {
 
       axios.get(`${import.meta.env.VITE_BACKEND_URL}/customers/${customerId}`)
-      .then((foundCustomer) => {
-        setCurrentCustomer(foundCustomer.data)
-      })
-      .catch((err) => {
-        console.log(err)
-      })
+        .then((foundCustomer) => {
+          setCurrentCustomer(foundCustomer.data)
+        })
+        .catch((err) => {
+          console.log(err)
+        })
     }
     
   }, [customerId])

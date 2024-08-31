@@ -24,6 +24,7 @@ function AllCustomersPage() {
 
   const [customerList, setCustomerList] = useState([])
   const [customerSales, setCustomerSales] = useState([])
+  const [loading, setLoading] = useState(true)
 
   async function fetchCustomerData() {
 
@@ -38,13 +39,14 @@ function AllCustomersPage() {
 
     } catch (error) {
       console.log('Error fetching data: ', error)
+    } finally {
+      setLoading(false)
     }
   }
 
   useEffect(() => {
 
     fetchCustomerData()
-
   }, [])
 
   function showCustomerRow(customer) {
@@ -56,11 +58,11 @@ function AllCustomersPage() {
       correspondingSales,
       row: (
         <TableRow key={customer.id}>
-          <TableCell><img src={customer.customer_logoURL} alt={`Logo of ${customer.name}`} style={{"height": 105}}/></TableCell>
+          <TableCell><img src={customer.customer_logoURL} alt={`Logo of ${customer.name}`} className="h-20 w-20 object-cover rounded-full shadow-md"/></TableCell>
           <TableCell>{customer.name}</TableCell>
           <TableCell>{correspondingSales}</TableCell>
-          <TableCell><Link to={`/customers/${customer.id}`}><button>Check Info</button></Link></TableCell>
-          <TableCell><Link to={`/customers/${customer.id}/edit`}><button>Edit Customer</button></Link></TableCell>
+          <TableCell><Link to={`/customers/${customer.id}`}><Button variant='outline'>Check Info</Button></Link></TableCell>
+          <TableCell><Link to={`/customers/${customer.id}/edit`}><Button variant='outline'>Edit Customer</Button></Link></TableCell>
         </TableRow>
       )
     }
@@ -82,22 +84,30 @@ function AllCustomersPage() {
     setCustomerList(customerRowsWithSales.map(item => item.customer))
   }
 
+  if (loading) {
+    return (
+      <div className='flex justify-center items-center min-h-screen'>
+        <div className="loader">Loading...</div>
+      </div>
+    )
+  }
+
   return (
-    <div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Our Customers</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div>
-            <Button><Link to={`/customers/create`}>Create A Customer</Link></Button>
-          </div>
-          <div>
-            <Button onClick={sortByName}>Sort by Name</Button>
-            <Button onClick={sortBySales}>Sort by Sales</Button>
-          </div>
-          <div>
-            <Table>
+    <div className="bg-gradient-to-r from-blue-100 via-white to-blue-50 min-h-screen py-10 px-4">
+      <div className="max-w-6xl mx-auto">
+        <Card className="shadow-lg rounded-lg bg-white">
+          <CardHeader className="p-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+            <CardTitle className="text-3xl font-semibold">Our Customers</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <Button className="bg-gradient-to-r from-green-400 to-blue-500 text-white shadow-md hover:from-green-500 hover:to-blue-600 transition-all duration-300"><Link to={`/customers/create`}>Create A Customer</Link></Button>
+              <div>
+                <Button onClick={sortByName} className="bg-blue-500 text-white mr-2 hover:bg-blue-600 transition-all duration-300 shadow-md">Sort by Name</Button>
+                <Button onClick={sortBySales} className="bg-blue-500 text-white hover:bg-blue-600 transition-all duration-300 shadow-md">Sort by Sales</Button>
+              </div>
+            </div>
+            <Table className="min-w-full border-collapse">
               <TableHeader>
                 <TableRow>
                   <TableHead>Brand Logo</TableHead>
@@ -111,9 +121,9 @@ function AllCustomersPage() {
                 {customerList.map(customer => showCustomerRow(customer).row)}
               </TableBody>
             </Table>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

@@ -31,31 +31,29 @@ function HomePage() {
 
   async function fetchData() {
     try {
-      const productionLinesResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/productionLines`)
+      const [productionLinesResponse, salesResponse, customersResponse, productsResponse] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/productionLines`),
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/sales`),
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/customers`),
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/products`)
+      ])
+
       setProductionLines(productionLinesResponse.data)
-
-      const salesResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/sales`)
       setSalesData(salesResponse.data)
-
-      const customersResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/customers`)
       setCustomers(customersResponse.data)
-
-      const productsResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/products`)
       setProducts(productsResponse.data)
 
-      if (newSalesCount !== 0) {
-        const anySales = productionLinesResponse.data.reduce((acc, line) => {
-          if (line.hasSales) {
-            const sale = salesResponse.data.find(sale => sale.id === line.id)
-            if (sale && sale.listedItems.length > 0) {
-              return acc + sale.listedItems.length
-            }
+      const anySales = productionLinesResponse.data.reduce((acc, line) => {
+        if (line.hasSales) {
+          const sale = salesResponse.data.find(sale => sale.id === line.id)
+          if (sale && sale.listedItems.length > 0) {
+            return acc + sale.listedItems.length
           }
-          return acc
-        }, 0)
-        setNewSalesCount(anySales)
-      }
-      
+        }
+        return acc
+      }, 0)
+
+      setNewSalesCount(anySales)
 
     } catch (error) {
       console.log('Error fetching data: ', error)
@@ -64,27 +62,31 @@ function HomePage() {
 
   // INITIAL PAGE LOAD
   useEffect(() => {
+
     fetchData()
   }, [])
 
   // PROGRESS BAR PAGE LOAD
   useEffect(() => {
+
+    if (!loading) return
+
     const timer = setInterval(() => {
       if (progress < 100) {
         switch (progress) {
           case 0:
-            setProgress(25);
-            break;
+            setProgress(25)
+            break
           case 25:
             setTimeout(() => {
               setProgress(75)
-            }, 1000);
-            break;
+            }, 1000)
+            break
           case 75:
-            setProgress(100);
-            break;
+            setProgress(100)
+            break
           default:
-            break;
+            break
         }
       } else {
         setLoading(false)
@@ -93,6 +95,7 @@ function HomePage() {
       }
     }, 1000)
 
+    return () => clearInterval(timer)
   }, [loading, progress])
 
 
@@ -232,42 +235,36 @@ function HomePage() {
   }
 
   return (
-    <div>
+    <div className="p-4 space-y-4">
       {loading ? (
-        <Progress value={progress} />
+        <Card className="p-4 flex items-center justify-center">
+          <Progress value={progress} className="w-32"/>
+        </Card>
       ) : (
         <>
-          <article>
-            <Link to="/customers">
-              <Card>
-                <CardHeader>
+          <article className="space-y-4">
+            <Link to="/customers" className="block">
+              <Card className="transition-transform transform hover:scale-105">
+                <CardHeader className="bg-blue-500 text-white">
                   <CardTitle>Customers</CardTitle>
-                  <CardDescription>see all customers</CardDescription>
+                  <CardDescription>See all customers</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div>
-                    {customers.length > 0 ? (<p>{customers.length} customers registered</p>) : (<p>No customers found</p>)}
-                  </div>
+                <CardContent className="p-4">
+                  <p>{customers.length > 0 ? `${customers.length} customers registered` : 'No customers found'}</p>
                 </CardContent>
               </Card>
             </Link>
-            <Link to="/managerview">
-              <Card>
-                <CardHeader>
+            <Link to="/managerview" className="block">
+              <Card className="transition-transform transform hover:scale-105">
+                <CardHeader className="bg-green-500 text-white">
                   <CardTitle>Production</CardTitle>
-                  <CardDescription>see production lines</CardDescription>
+                  <CardDescription>See production lines</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div>
-                    {productionLines.map((line) => {
-                      if (line.hasSales) {
-                        return (
-                          <div key={line.id}>
-                            <p>{line.name} waiting for actions</p>
-                          </div>
-                        )
-                      }
-                    })}
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    {productionLines.map(line => line.hasSales && (
+                      <p key={line.id} className="text-lg font-medium">{line.name} waiting for actions</p>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
@@ -275,16 +272,14 @@ function HomePage() {
           </article>  
           <article>
             <Card>
-              <CardHeader>
+              <CardHeader className="bg-yellow-500 text-white">
                 <CardTitle>Sales Division</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div>
-                  {newSalesCount.length > 0 ? (<h6>{newSalesCount} new sales!</h6>) : (<h6>No new sales</h6>)}
-                </div>
+              <CardContent className="p-4">
+                <h6 className="text-lg font-semibold">{newSalesCount > 0 ? `${newSalesCount} new sales!` : 'No new sales'}</h6>
               </CardContent>
-              <CardFooter>
-                <Button onClick={generateRandomSales}>Check Sales</Button>
+              <CardFooter className="flex justify-center">
+                <Button onClick={generateRandomSales} className="bg-blue-500 text-white hover:bg-blue-600">Check Sales</Button>
               </CardFooter>
             </Card>
           </article>

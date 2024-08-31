@@ -67,9 +67,6 @@ function CustomerPage() {
         const productsResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/products`)
         setProducts(productsResponse.data)
 
-        const foundCustomer = allCustomers.find(oneCustomer => oneCustomer.id === customerId)
-        setCurrentCustomer(foundCustomer)
-
       } catch (error) {
         console.log(error)
       }
@@ -77,99 +74,123 @@ function CustomerPage() {
     
     fetchData()
 
-    if(!currentCustomer) return
+  }, [])
 
-    const processCustomerData = () => {
-      const displaySelection = []
-      const data = []
+  useEffect(() => {
 
-      if (currentCustomer.selected_products.length > 0) {
-        const productInfo = currentCustomer.selected_products.map((oneProduct) => {
+    const foundCustomer = allCustomers.find(oneCustomer => oneCustomer.id === customerId)
+      setCurrentCustomer(foundCustomer)
+
+    console.log('current customer: ', currentCustomer)
+
+    if(currentCustomer) {
+
+      const processCustomerData = () => {
+      
+        const displaySelection = []
+        const data = []
+  
+        // ACCORDION CONTENT
+        if (currentCustomer.selected_products.length > 0) {
+
+          const productMap = new Map(products.map(p => [p.id, p]))
+
+          const productInfo = currentCustomer.selected_products.map((oneProduct) => 
+            productMap.get(oneProduct.value)
+          )
+    
+          const groupedByProductionLine = productInfo.reduce((acc, product) => {
+            if (!acc[product.productionLineId]) {
+              acc[product.productionLineId] = []
+            }
+            acc[product.productionLineId].push(product)
+            return acc
+          }, {})
+
+          productionLines.forEach((line) => {
+            displaySelection.push({
+              id: line.id,
+              productionLine: line.name,
+              productsByProductionLine: groupedByProductionLine[line.id] || [{id: line.id, text: 'No products selected.'}]
+            })
+          })
+    
+        } else {
+          productionLines.forEach((line) => {
+            displaySelection.push({
+              id: line.id,
+              productionLine: line.name,
+              productsByProductionLine: [{id: line.id, text: 'No products selected for this production line.'}]
+            })
+          })
+        }
+    
+
+        // TABLE CONTENT
+        if (currentCustomer.delivered.length > 0) {
+          currentCustomer.delivered.forEach((oneOrder) => {
+            data.push(oneOrder)
+          })
+        }
+
+        const customersWithOrders = allCustomers.filter((oneCustomer) => {
           return (
-            products.find(correspondingProduct => correspondingProduct.id === oneProduct.value)
+            oneCustomer.delivered.length > 0 && oneCustomer.id !== customerId
           )
         })
-  
-        productionLines.forEach((line) => {
-  
-          const productsByProductionLine = productInfo.filter(oneProduct => oneProduct.productionLineId === line.id)
-          displaySelection.push({
-            id: line.id,
-            productionLine: line.name,
-            productsByProductionLine
-          })
-        })
-  
-      } else {
-        productionLines.forEach((line) => {
-          const productsByProductionLine = {id: line.id, text: 'No products selected'}
-          displaySelection.push({
-            id: line.id,
-            productionLine: line.name,
-            productsByProductionLine
-          })
-        })
-      }
-  
-      if (currentCustomer.delivered.length > 0) {
-        currentCustomer.delivered.forEach((oneOrder) => {
-          data.push(oneOrder)
-        })
-      }
-      const customersWithOrders = allCustomers.filter((oneCustomer) => {
-        return (
-          oneCustomer.delivered.length > 0 && oneCustomer.id !== customerId
-        )
-      })
-    
-      const productionLineMap = productionLines.reduce((acc, line) => {
-        acc[line.id] = line.name
-        return acc
-      }, {})
-    
-      const ordersByProductionLine = customersWithOrders.flatMap(customer => customer.delivered)
-    
-      const currentCustomerOrders = currentCustomer.delivered.reduce((acc, product) => {
-        const productionLineName = productionLineMap[product.productionLineId]
-    
-        if (!acc[productionLineName]) {
-          acc[productionLineName] = 0
-        }
-    
-        acc[productionLineName] += product.quantity
-        return acc
-      }, {})
-    
-      const productGroup = ordersByProductionLine.reduce((acc, oneOrder) => {
-        const productionLineName = productionLineMap[oneOrder.productionLineId]
-    
-        if (!acc[productionLineName]) {
-          acc[productionLineName] = { totalQuantity: 0, customerSet: new Set() }
-        }
-    
-        acc[productionLineName].totalQuantity += oneOrder.quantity
-        acc[productionLineName].customerSet.add(oneOrder.customerId)
-    
-        return acc
-      }, {})
-    
-      const chartData = Object.entries(productGroup).map(([productionLine, { totalQuantity, customerSet}]) => (
-        {
-          productionLine,
-          average: totalQuantity / customerSet.size,
-          orders: currentCustomerOrders[productionLine] || 0
-    
-      }))
       
-      return { displaySelection, data, chartData }
+        const productionLineMap = productionLines.reduce((acc, line) => {
+          acc[line.id] = line.name
+          return acc
+        }, {})
+      
+        const ordersByProductionLine = customersWithOrders.flatMap(customer => customer.delivered)
+      
+        const currentCustomerOrders = currentCustomer.delivered.reduce((acc, product) => {
+          const productionLineName = productionLineMap[product.productionLineId]
+      
+          if (!acc[productionLineName]) {
+            acc[productionLineName] = 0
+          }
+      
+          acc[productionLineName] += product.quantity
+          return acc
+        }, {})
+      
+        const productGroup = ordersByProductionLine.reduce((acc, oneOrder) => {
+          const productionLineName = productionLineMap[oneOrder.productionLineId]
+      
+          if (!acc[productionLineName]) {
+            acc[productionLineName] = { totalQuantity: 0, customerSet: new Set() }
+          }
+      
+          acc[productionLineName].totalQuantity += oneOrder.quantity
+          acc[productionLineName].customerSet.add(oneOrder.customerId)
+      
+          return acc
+        }, {})
+      
+        const chartData = Object.entries(productGroup).map(([productionLine, { totalQuantity, customerSet}]) => (
+          {
+            productionLine,
+            average: totalQuantity / customerSet.size,
+            orders: currentCustomerOrders[productionLine] || 0
+      
+        }))
+        
+        return { displaySelection, data, chartData }
+  
+      }
+  
+      const { displaySelection, data, chartData } = processCustomerData()
+  
+      setSelection(displaySelection)
+      setShowData(data)
+      setShowChartData(chartData)
 
     }
 
-    const { displaySelection, data, chartData } = processCustomerData()
 
-    setSelection(displaySelection)
-    setShowData(data)
-    setShowChartData(chartData)
 
   }, [customerId])
 
@@ -212,78 +233,76 @@ function CustomerPage() {
   })
 
   return (
-    <div>
+    <div className="p-6 bg-gray-100 min-h-screen">
       {currentCustomer && (
         <>
-          <article>
-            <Card>
-              <CardHeader>
-                <CardTitle>{currentCustomer.name}</CardTitle>
+          <article className="mb-6">
+            <Card className="shadow-lg rounded-lg overflow-hidden border border-gray-200 bg-white">
+              <CardHeader className="p-4 border-b border-gray-200">
+                <CardTitle className="text-lg font-semibold text-gray-800">{currentCustomer.name}</CardTitle>
               </CardHeader>
-              <CardContent>
-                <img src={currentCustomer.customer_logoURL} alt={`pic not loading`}/>
-                <div>
-                  <p>Contact: {currentCustomer.contact}</p>
-                  <p>Address: {currentCustomer.address}</p>
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-4">
+                  <img src={currentCustomer.customer_logoURL} alt={`pic not loading`} className="w-16 h-16 rounded-full border" />
+                  <div>
+                    <p className="text-sm text-gray-600">Contact: {currentCustomer.contact}</p>
+                    <p className="text-sm text-gray-600">Address: {currentCustomer.address}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
-            <section>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Selected Products</CardTitle>
+
+            <section className="mt-6">
+              <Card className="shadow-lg rounded-lg overflow-hidden border border-gray-200 bg-white">
+                <CardHeader className="p-4 border-b border-gray-200">
+                  <CardTitle className="text-lg font-semibold text-gray-800">Selected Products</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-4">
                   <Accordion type="single" collapsible className="w-full">
-                      {selection.map(oneItem => {
-                        return (
-                          <AccordionItem key={oneItem.id} value={`item-${oneItem.id}`}>
-                            <AccordionTrigger>{oneItem.productionLine}</AccordionTrigger>
-                            <AccordionContent>
-                              {oneItem.productsByProductionLine.map(oneObject => {
-                                if (oneObject.text) {
-                                  return (
-                                    <p key={oneObject.id}>{oneObject.text}</p>
-                                  )
-                                } else {
-                                  return (
-                                    <div key={oneObject.id}>
-                                      <p>{oneObject.name}</p>
-                                      <hr />
-                                      <p>{oneObject.description}</p>
-                                    </div>
-                                  )
-                                }
-                              })}
-                            </AccordionContent>
-                          </AccordionItem>
-                        )
-                      })}
+                    {selection.map(oneItem => (
+                      <AccordionItem key={oneItem.id} value={`item-${oneItem.id}`} className="border-b border-gray-200">
+                        <AccordionTrigger className="text-sm font-medium text-gray-700 hover:text-blue-600">{oneItem.productionLine}</AccordionTrigger>
+                        <AccordionContent className="mt-2 text-gray-600">
+                          {oneItem.productsByProductionLine.map(oneObject => (
+                              oneObject.text ? (
+                                <p key={oneObject.id} className="py-1">{oneObject.text}</p>
+                              ) : (
+                                <div key={oneObject.id} className="py-2">
+                                  <p className="font-medium">{oneObject.name}</p>
+                                  <hr className="my-2" />
+                                  <p className="text-sm">{oneObject.description}</p>
+                                </div>
+                              )
+                          ))}
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
                   </Accordion>
                 </CardContent>
               </Card>
             </section>
           </article>
-          <article>
-            <Tabs defaultValue="table">
-              <TabsList>
-                <TabsTrigger value="table">Orders</TabsTrigger>
-                <TabsTrigger value="chart">Chart</TabsTrigger>
+          
+          <article className="p-6 bg-white rounded-lg shadow-md">
+            <Tabs defaultValue="table" className="space-y-6">
+              <TabsList className="flex border-b border-gray-200">
+                <TabsTrigger value="table" className="px-4 py-2 text-sm font-medium text-gray-700 rounded-t-md hover:bg-blue-100 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 ease-in-out">Orders</TabsTrigger>
+                <TabsTrigger value="chart" className="px-4 py-2 text-sm font-medium text-gray-700 rounded-t-md hover:bg-blue-100 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 ease-in-out">Charts</TabsTrigger>
               </TabsList>
-              <TabsContent value="table">
+              <TabsContent value="table" className="bg-gray-50 p-6 rounded-b-lg shadow-md">
                 <div className="flex items-center py-4">
                  <Input
                   placeholder="Filter by name"
-                  value={table.getColumn("productName") && table.getColumn("productName").getFilterValue() || ""}
+                  value={table.getColumn("productName")?.getFilterValue() || ""}
                   onChange={(event) =>
                     table.getColumn("productName").setFilterValue(event.target.value)
                   }
-                  className="max-w-sm"
+                  className="max-w-sm border border-gray-300 rounded-lg px-4 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                  />
                 </div>
                 <OrderTable table={table} />
               </TabsContent>
-              <TabsContent value="chart">
+              <TabsContent value="chart" className="bg-gray-50 p-6 rounded-b-lg shadow-md">
                 <OrderChart chartData={showChartData} />
               </TabsContent> 
             </Tabs>
