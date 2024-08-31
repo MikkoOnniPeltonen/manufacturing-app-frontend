@@ -1,9 +1,19 @@
 
 import axios from 'axios'
 import { useState, useEffect, useRef } from 'react'
+
 import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowUp, faArrowDown } from '@fortawesome/free-solid-svg-icons'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Button } from '@/components/ui/button'
+import { Loader2 } from 'lucide-react'
+
 
 function ManagerViewPage() {
 
@@ -12,12 +22,15 @@ function ManagerViewPage() {
 
   const [productionLineId, setProductionLineId] = useState(null)
   const [showSales, setShowSales] = useState([])
+  const [currentProductionLine, setCurrentProductionLine] = useState(null)
 
-  const [allProductsInProduction, setAllProductsInProduction] = useState([])
+  const [productionItemCount, setProductionItemCount] = useState(0)
 
   const [selectedItems, setSelectedItems] = useState([])
   const [inProductionItems, setInProductionItems] = useState([])
+
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const parentRef = useRef(null)
 
@@ -46,19 +59,38 @@ function ManagerViewPage() {
 
   useEffect(() => {
 
-    const productionLineSale = allSales.find(sale => sale.id === productionLineId)
-    console.log(productionLineSale)
-    if(productionLineId && productionLineSale){
-      const filteredSales = productionLineSale.listedItems.map(oneSale => oneSale)
-      setShowSales(filteredSales)      
+    if (productionLineId) {
+      const foundProductionLine = productionLines.find(line => line.id === productionLineId)
+      setCurrentProductionLine(foundProductionLine)
+      const productionLineSale = allSales.find(sale => sale.id === productionLineId)
+      
+      if (productionLineSale) {
+        console.log('Sales based on production line: ', productionLineSale)
+        const filteredSales = productionLineSale.listedItems.map(oneSale => oneSale)
+        setShowSales(filteredSales) 
+      }
+      setSelectedItems([])
+      axios.get(`${import.meta.env.VITE_BACKEND_URL}/productions/${productionLineId}`)
+      .then((response) => {
+        setInProductionItems(response.data.inProductionItems)
+        setProductionItemCount(response.data.inProductionItems.length)
+      })
+      .catch((err) => {
+        console.log(err)
+      })
     }
-   
+    
   }, [productionLineId])
+
 
   // HANDLE EDIT
   const handleEdit = () => {
-    const foundProductionLine = productionLines.find(line => line.id === productionLineId)
-    if(foundProductionLine.hasSales) {
+
+    if (selectedItems.length > 0) {
+      return
+    }
+
+    if(currentProductionLine.hasSales) {
       axios.patch(`${import.meta.env.VITE_BACKEND_URL}/productionLines/${productionLineId}`, {
         hasSales: false
       })
@@ -72,10 +104,9 @@ function ManagerViewPage() {
       .catch((err) => {
         console.log(err)
       })
-    }
-    
-      
+    } 
   }
+
 
   // MOVE ITEMS IN EDIT
   const moveItem = (index, direction) => {
@@ -85,31 +116,42 @@ function ManagerViewPage() {
     setSelectedItems(newItems)
   }
 
+
   // CHECK IDENTICAL LISTS
   function checkSalesArrays(salesItemsByProduction, totalPatchedProducts) {
 
     if (salesItemsByProduction.length !== totalPatchedProducts.length) {
-      return false;
+      return false
     }
 
-    const saleIds1 = salesItemsByProduction.map(sale => sale.saleId).sort();
-    const saleIds2 = totalPatchedProducts.map(sale => sale.saleId).sort();
+    const saleIds1 = new Set(salesItemsByProduction.map(sale => sale.saleId))
+    const saleIds2 = new Set(totalPatchedProducts.map(sale => sale.saleId))
   
-    for (let i = 0; i < saleIds1.length; i++) {
-      if (saleIds1[i] !== saleIds2[i]) {
-        return false;
+    if (saleIds1.size !== saleIds2.size) {
+      return false
+    }
+
+    for (const id of saleIds1) {
+      if (!saleIds2.has(id)) {
+        return false
       }
     }
-
-    return true;
+    return true
   }
+
 
   // HANDLE SAVE OF EDITED LIST
   async function handleSave() {
 
-    try {
+    if (selectedItems.length === 0) {
+      return
+    }
+    setIsSaving(true)
 
-      const totalPatchedProducts = []
+    const totalPatchedProducts = []
+    const salesItemsByProduction = []
+
+    try {
 
       const patchingData = await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/productions/${productionLineId}`, {
         inProductionItems: selectedItems
@@ -117,25 +159,27 @@ function ManagerViewPage() {
       totalPatchedProducts.push(...patchingData.data)
 
       const newProductionList = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/productions/${productionLineId}`)
-      setAllProductsInProduction(newProductionList.data)
 
-      const salesItemsByProduction = []
-      if (allProductsInProduction.inProductionItems.length > 0) {
-          salesItemsByProduction.push(...allProductsInProduction.inProductionItems)
+      
+      if (newProductionList.data.inProductionItems.length > 0) {
+          salesItemsByProduction.push(...newProductionList.data.inProductionItems)
         }
       
-      console.log(totalPatchedProducts)
-      console.log(salesItemsByProduction)
+      console.log('patched products: ', totalPatchedProducts)
+      console.log('updated production lists: ', salesItemsByProduction)
+
       const haveIdenticalSales = checkSalesArrays(salesItemsByProduction, totalPatchedProducts)
       if (!haveIdenticalSales) {
         throw new Error('Sales are not identical!')
       }
 
-      setInProductionItems(selectedItems)
+      setInProductionItems(newProductionList.data.inProductionItems)
       setSelectedItems([])
+      setIsSaving(false)
       
     } catch (error) {
       console.log('Error saving data: ', error)
+      setIsSaving(false)
     }
   }
 
@@ -158,23 +202,23 @@ function ManagerViewPage() {
       const processItem = async (item, remainingItems) => {
         
         try {
-          const productionLine = productionLines.find(line => line.id === productionLineId)
-          if (!productionLine) {
+          if (!currentProductionLine) {
             console.error("Production line not found")
             setIsProcessing(false)
             return
           }
-          const timeToProcess = (item.quantity / productionLine.capacity) * 10000
+          const timeToProcess = (item.quantity / currentProductionLine.capacity) * 10000
   
           await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/productions/${productionLineId}`, {
             inProductionItems: remainingItems
           })
 
           const customerResponse =  await axios.get(`${import.meta.env.VITE_BACKEND_URL}/customers/${item.customerId}`)
-          const customer = customerResponse.data
+
+          item.status = true
 
           await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/customers/${item.customerId}`, {
-            delivered: [...customer.delivered, item]
+            delivered: [...customerResponse.data.delivered, item]
           })
 
           setInProductionItems(remainingItems)
@@ -203,21 +247,53 @@ function ManagerViewPage() {
 
 
   return (
-    <div>
       <div>
-        <div>
+        <aside>
           {productionLines.map((productionLine) => {
             return (
-              <button key={productionLine.id} onClick={() => {setProductionLineId(productionLine.id)}}>
-                {productionLine.name}
-              </button>
+              <Card key={productionLine.id} onClick={() => {setProductionLineId(productionLine.id)}} disabled={isProcessing || isSaving} className="relative max-w-xs overflow-hidden rounded-2xl shadow-lg group">
+                <CardHeader>{productionLine.name}</CardHeader>
+                <CardContent>
+                  <img src={productionLine.product_logoURL} alt={`Image of ${productionLine.name}`} className="transition-transform group-hover:scale-110 duration-200"/>
+                </CardContent>
+              </Card>
             )
           })}
-        </div>
+        </aside>
         <div>
           <div>
-            <button onClick={handleEdit}>EDIT</button>
-            <div>
+            {isSaving && (
+              <Card>
+                <CardHeader>Loading..</CardHeader>
+                <CardContent>
+                  <Loader2 />
+                  <p>Please wait</p>
+                </CardContent>
+              </Card>
+            )}
+            {isProcessing && (
+              <Card>
+                <CardHeader>{currentProductionLine.name} in progress</CardHeader>
+                <CardContent>
+                  <p>{inProductionItems.length} / {productionItemCount}</p>
+                </CardContent>
+              </Card>
+            )}
+            {!isProcessing && productionItemCount > 0 && inProductionItems.length === 0 && (
+              <Card>
+                <CardHeader>{currentProductionLine.name} production completed!</CardHeader>
+                <CardContent>
+                  <p>Well done!</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Sales</CardTitle>
+              <Button onClick={handleEdit}>EDIT</Button>
+            </CardHeader>
+            <CardContent>
               <ul>
                 {showSales.map((item) => {
                   return (
@@ -228,11 +304,14 @@ function ManagerViewPage() {
                   )
                 })}
               </ul>
-            </div>
-          </div>
-          <div>
-            <button onClick={handleSave}>SAVE</button>
-            <div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Selection</CardTitle>
+              <Button onClick={handleSave}>SAVE</Button>
+            </CardHeader>
+            <CardContent>
               <ul ref={parentRef}>
                 {selectedItems.map((item, index) =>{ 
                   return(
@@ -249,11 +328,14 @@ function ManagerViewPage() {
                   )
                 })}
               </ul>
-            </div>
-          </div>
-          <div>
-            <button onClick={handleStart}>START</button>
-            <div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>In Production</CardTitle>
+              <Button onClick={handleStart}>START</Button>
+            </CardHeader>
+            <CardContent>
               <ul>
                 {inProductionItems.map((item) => {
                   return (
@@ -264,11 +346,10 @@ function ManagerViewPage() {
                   )
                 })}
               </ul>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-    </div>
   )
 }
 

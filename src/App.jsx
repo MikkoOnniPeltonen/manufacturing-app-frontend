@@ -3,11 +3,13 @@ import HomePage from './pages/HomePage'
 import ManagerViewPage from './pages/ManagerViewPage'
 import CustomerPage from './pages/CustomerPage'
 import CreateCustomerPage from './pages/CreateCustomerPage'
+import EditCustomerPage from './pages/EditCustomerPage'
+
 import Navbar from './components/Navbar'
 
 import { Routes, Route } from 'react-router-dom'
 import './App.css'
-import EditCustomerPage from './pages/EditCustomerPage'
+
 
 
 function App() {

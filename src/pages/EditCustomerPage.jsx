@@ -2,7 +2,16 @@
 import axios from 'axios'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+
 import CustomerForm from '../components/CustomerForm'
+
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+  } from "@/components/ui/card"
+import { Button } from '@/components/ui/button'
 
 function EditCustomerPage() {
 
@@ -46,13 +55,17 @@ function EditCustomerPage() {
     }
     return (
         <div>
-        {customer && (
-            <div>
-                <h1>Edit Customer</h1>
-                <CustomerForm onSubmit={handleEditCustomer} customerData={customer} buttonText="Update Customer" />
-                <button onClick={handleDeleteCustomer}>Delete Customer</button>
-            </div>
-        )}
+            {customer && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Edit Customer</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <CustomerForm onSubmit={handleEditCustomer} customerData={customer} buttonText="Update Customer" />
+                        <Button onClick={handleDeleteCustomer}>Delete Customer</Button>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     )
 }

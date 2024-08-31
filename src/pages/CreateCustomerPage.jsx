@@ -3,6 +3,12 @@
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import CustomerForm from '../components/CustomerForm'
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+  } from "@/components/ui/card"
 
 function CreateCustomerPage() {
 
@@ -22,8 +28,14 @@ function CreateCustomerPage() {
 
     return (
         <div>
-            <h1>Create Customer</h1>
-            <CustomerForm onSubmit={handleCreateCustomer} buttonText="Create Customer" />
+            <Card>
+                <CardHeader>
+                    <CardTitle>Create Customer</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <CustomerForm onSubmit={handleCreateCustomer} buttonText="Create Customer" />
+                </CardContent>
+            </Card>  
         </div>
     )
 

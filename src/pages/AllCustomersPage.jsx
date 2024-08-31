@@ -2,6 +2,23 @@
 import axios from 'axios'
 import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+
+import { Button } from "@/components/ui/button"
 
 function AllCustomersPage() {
 
@@ -38,13 +55,13 @@ function AllCustomersPage() {
       customer,
       correspondingSales,
       row: (
-        <tr key={customer.id}>
-          <td><img src={customer.customer_logoURL} alt={`Logo of ${customer.name}`}/></td>
-          <td>{customer.name}</td>
-          <td>{correspondingSales}</td>
-          <td><Link to={`/customers/${customer.id}`}><button>Check Info</button></Link></td>
-          <td><Link to={`/customers/${customer.id}/edit`}><button>Edit Customer</button></Link></td>
-        </tr>
+        <TableRow key={customer.id}>
+          <TableCell><img src={customer.customer_logoURL} alt={`Logo of ${customer.name}`} style={{"height": 105}}/></TableCell>
+          <TableCell>{customer.name}</TableCell>
+          <TableCell>{correspondingSales}</TableCell>
+          <TableCell><Link to={`/customers/${customer.id}`}><button>Check Info</button></Link></TableCell>
+          <TableCell><Link to={`/customers/${customer.id}/edit`}><button>Edit Customer</button></Link></TableCell>
+        </TableRow>
       )
     }
   }
@@ -67,28 +84,36 @@ function AllCustomersPage() {
 
   return (
     <div>
-      <h1>Our Customers</h1>
-      <div>
-        <button><Link to={`/customers/create`}>Create A Customer</Link></button>
-      </div>
-      <div>
-        <button onClick={sortByName}>Sort by Name</button>
-        <button onClick={sortBySales}>Sort by Sales</button>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Brand Logo</th>
-            <th>Name</th>
-            <th>Sales</th>
-            <th>Customer Info</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {customerList.map(customer => showCustomerRow(customer).row)}
-        </tbody>
-      </table>
+      <Card>
+        <CardHeader>
+          <CardTitle>Our Customers</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div>
+            <Button><Link to={`/customers/create`}>Create A Customer</Link></Button>
+          </div>
+          <div>
+            <Button onClick={sortByName}>Sort by Name</Button>
+            <Button onClick={sortBySales}>Sort by Sales</Button>
+          </div>
+          <div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Brand Logo</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Sales</TableHead>
+                  <TableHead>Customer Info</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {customerList.map(customer => showCustomerRow(customer).row)}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

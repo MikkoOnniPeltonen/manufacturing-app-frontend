@@ -3,7 +3,18 @@ import { Link } from 'react-router-dom'
 import axios from 'axios'
 import { useState, useEffect } from 'react'
 import { v4 as uuidv4 } from 'uuid'
+
 import { Progress } from "@/components/ui/progress"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+
 
 function HomePage() {
 
@@ -33,9 +44,9 @@ function HomePage() {
       setProducts(productsResponse.data)
 
       if (newSalesCount !== 0) {
-        const anySales = productionLines.reduce((acc, line) => {
+        const anySales = productionLinesResponse.data.reduce((acc, line) => {
           if (line.hasSales) {
-            const sale = salesData.find(sale => sale.id === line.id)
+            const sale = salesResponse.data.find(sale => sale.id === line.id)
             if (sale && sale.listedItems.length > 0) {
               return acc + sale.listedItems.length
             }
@@ -105,18 +116,22 @@ function HomePage() {
   function checkSalesArrays(allSalesItems, totalPatchedSales) {
 
     if (allSalesItems.length !== totalPatchedSales.length) {
-      return false;
+      return false
     }
   
-    const saleIds1 = allSalesItems.map(sale => sale.saleId).sort();
-    const saleIds2 = totalPatchedSales.map(sale => sale.saleId).sort();
+    const saleIds1 = new Set(allSalesItems.map(sale => sale.saleId))
+    const saleIds2 = new Set(totalPatchedSales.map(sale => sale.saleId))
     
-    for (let i = 0; i < saleIds1.length; i++) {
-      if (saleIds1[i] !== saleIds2[i]) {
-        return false;
+    if (saleIds1.size !== saleIds2.size) {
+      return false
+    }
+
+    for (const id of saleIds1) {
+      if (!saleIds2.has(id)) {
+        return false
       }
     }
-    return true;
+    return true
   }
 
   // GENERATES SALES
@@ -124,13 +139,10 @@ function HomePage() {
 
     setLoading(true)
 
-
     const randomSales = []
 
     const totalPatchedSales = []
     const allSalesItems = []
-
-    
 
     try {
 
@@ -143,6 +155,7 @@ function HomePage() {
       for (const customer of randomCustomers) {
         const randomProducts = customer.selected_products.sort(() => 0.5 - Math.random()).slice(0, Math.min(2, customer.selected_products.length))
         console.log(randomProducts)
+
         for (const product of randomProducts) {
           const foundProduct = products.find(p => p.id === product.value)
           if (foundProduct) {
@@ -153,11 +166,12 @@ function HomePage() {
               customerId: customer.id,
               customerName: customer.name,
               productionLineId: foundProduct.productionLineId,
+              status: false,
               quantity: getRandomInt(100, 5000),
               dateToDeliver: getRandomDate()
             })
           } else {
-            console.warn(`Skipping product with value ${product.value} (not found in products)`)
+            console.warn(`Skipping product with value ${product.value}. (Not found in products)`)
           }
         }
       }
@@ -199,11 +213,10 @@ function HomePage() {
       console.log('updated production lines: ', productionLines)
 
       
-      for (const sale of salesData) {
+      for (const sale of updatedSalesResponse.data) {
         if (sale.listedItems.length > 0) {
           allSalesItems.push(...sale.listedItems)
-        }
-        
+        } 
       }
 
       const haveIdenticalSales = checkSalesArrays(allSalesItems, totalPatchedSales)
@@ -224,37 +237,57 @@ function HomePage() {
         <Progress value={progress} />
       ) : (
         <>
-          <div>
+          <article>
             <Link to="/customers">
-              <div>
-                <h2>Customers</h2>
-                {customers.length > 0 ? (<p>${customers.length} customers registered</p>) : (<p>No customers found</p>)}
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Customers</CardTitle>
+                  <CardDescription>see all customers</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div>
+                    {customers.length > 0 ? (<p>{customers.length} customers registered</p>) : (<p>No customers found</p>)}
+                  </div>
+                </CardContent>
+              </Card>
             </Link>
-          </div>
-          <div>
             <Link to="/managerview">
-              <div>
-                <h2>Production</h2>
-                <div>
-                  {productionLines.map((line) => {
-                    if (line.hasSales) {
-                      return (
-                        <div key={line.id}>
-                          <p>{line.name} waiting for actions</p>
-                        </div>
-                      )
-                    }
-                  })}
-                </div>
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Production</CardTitle>
+                  <CardDescription>see production lines</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div>
+                    {productionLines.map((line) => {
+                      if (line.hasSales) {
+                        return (
+                          <div key={line.id}>
+                            <p>{line.name} waiting for actions</p>
+                          </div>
+                        )
+                      }
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
             </Link>
-          </div>
-          <div>
-            <h3>Sales Division</h3>
-            <button onClick={generateRandomSales}>Check Sales</button>
-            {newSalesCount.length > 0 ? (<h6>${newSalesCount} new sales!</h6>) : (<h6>No new sales</h6>)}
-          </div>
+          </article>  
+          <article>
+            <Card>
+              <CardHeader>
+                <CardTitle>Sales Division</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div>
+                  {newSalesCount.length > 0 ? (<h6>{newSalesCount} new sales!</h6>) : (<h6>No new sales</h6>)}
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button onClick={generateRandomSales}>Check Sales</Button>
+              </CardFooter>
+            </Card>
+          </article>
         </>
       )}
     </div>
