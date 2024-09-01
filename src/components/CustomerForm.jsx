@@ -16,10 +16,10 @@ function CustomerForm({ onSubmit, customerData={}, buttonText }) {
     } = useForm({
         defaultValues: {
             name: customerData.name || '',
-            logo: customerData.customer_logoURL || '',
+            customer_logoURL: customerData.customer_logoURL || '',
             contact: customerData.contact || '',
             address: customerData.address || '',
-            selectedProducts: customerData.selected_products || [],
+            selected_products: customerData.selected_products || [],
             delivered: customerData.delivered || [],
         }
      })
@@ -57,12 +57,12 @@ function CustomerForm({ onSubmit, customerData={}, buttonText }) {
                 {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
             </div>
             <div className="mb-4">
-                <label htmlFor='logo' className="block text-sm font-medium text-gray-700">Brand Logo</label>
+                <label htmlFor='customer_logoURL' className="block text-sm font-medium text-gray-700">Brand Logo</label>
                 <input 
                     type="text" 
-                    {...register('logo', { required: "Customer logo is required" })}
+                    {...register('customer_logoURL', { required: "Customer logo is required" })}
                     placeholder='Enter Customer logo URL'
-                    id='logo'
+                    id='customer_logoURL'
                     className={`mt-1 block w-full border ${errors.name ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
                 />
                 {errors.logo && <p className="text-red-500 text-sm mt-1">{errors.logo.message}</p>}
@@ -72,7 +72,7 @@ function CustomerForm({ onSubmit, customerData={}, buttonText }) {
                 <input 
                     type="text" 
                     {...register('contact', { required: "Customer contact is required" })}
-                    placeholder='Enter Customer contact'
+                    placeholder='Enter Customer contact info'
                     id='contact'
                     className={`mt-1 block w-full border ${errors.name ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
                 />
@@ -90,20 +90,20 @@ function CustomerForm({ onSubmit, customerData={}, buttonText }) {
                 {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>}
             </div>
             <div className="mb-4">
-                <label htmlFor='selectedProducts' className="block text-sm font-medium text-gray-700">Products</label>
+                <label htmlFor='selected_products' className="block text-sm font-medium text-gray-700">Products</label>
                 <Controller 
-                    name="selectedProducts"
+                    name="selected_products"
                     control={control}
                     render={({ field }) => (
                         <Select 
                             isMulti
                             options={options}
-                            value={options.filter(option => field.value.includes(option.value))}
+                            value={options.filter(option => field.value?.includes(option.value))}
                             onChange={selectedOptions => {
-                                setValue('selectedProducts', selectedOptions.map(option => option.value))
+                                setValue('selected_products', selectedOptions.map(option => option.value))
                             }}
                             placeholder='Select products'
-                            id='selectedProducts'
+                            id='selected_products'
                             className="mt-1"
                         />
                     )}

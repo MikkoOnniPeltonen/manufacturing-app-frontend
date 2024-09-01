@@ -76,3 +76,7 @@
 .animate-spin {
   animation: spin 1s linear infinite;
 }
+
+body {
+  background-color: #F5F5F5;
+}

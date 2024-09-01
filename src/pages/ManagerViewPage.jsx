@@ -247,10 +247,10 @@ function ManagerViewPage() {
 
 
   return (
-      <div className="p-4 space-y-4">
-        <aside className="flex flex-wrap gap-4">
+      <div className="p-4 flex space-y-4">
+        <aside className="flex flex-col gap-4 w-1/4">
           {productionLines.map((productionLine) => (
-            <Card key={productionLine.id} onClick={() => {setProductionLineId(productionLine.id)}} disabled={isProcessing || isSaving} className="relative max-w-xs overflow-hidden rounded-xl shadow-lg cursor-pointer transition-transform transform hover:scale-105">
+            <Card key={productionLine.id} onClick={() => {setProductionLineId(productionLine.id)}} disabled={isProcessing || isSaving} className="relative overflow-hidden rounded-xl shadow-lg cursor-pointer transition-transform transform hover:scale-105">
               <CardHeader className="bg-gray-800 text-white p-4">{productionLine.name}</CardHeader>
               <CardContent className="p-2">
                 <img src={productionLine.product_logoURL} alt={`Image of ${productionLine.name}`} className="w-full h-32 object-cover"/>
@@ -258,107 +258,109 @@ function ManagerViewPage() {
             </Card>
           ))}
         </aside>
-        <div className="space-y-4">
-          {isSaving && (
-            <Card className="bg-yellow-100 borger-yellow-300">
-              <CardHeader className="bg-yellow-300">Loading..</CardHeader>
-              <CardContent className="flex items-center justify-center p-4">
+        <div className="flex-1 space-y-4">
+          <div className="space-y-4">
+            {isSaving && (
+              <Card className="bg-yellow-100 borger-yellow-300">
+                <CardHeader className="bg-yellow-300">Loading..</CardHeader>
+                <CardContent className="flex items-center justify-center p-4">
                   <Loader2 className="animate-spin mr-2"/>
                   <p>Please wait</p>
-              </CardContent>
-            </Card>
-          )}
-          {isProcessing && (
-            <Card className="bg-blue-100 border-blue-300">
-              <CardHeader className="bg-blue-300">{currentProductionLine?.name} in progress</CardHeader>
-              <CardContent className="p-4">
+                </CardContent>
+              </Card>
+            )}
+            {isProcessing && (
+              <Card className="bg-blue-100 border-blue-300">
+                <CardHeader className="bg-blue-300">{currentProductionLine?.name} in progress</CardHeader>
+                <CardContent className="p-4">
                   <p>{inProductionItems.length} / {productionItemCount}</p>
-              </CardContent>
-            </Card>
-          )}
-          {!isProcessing && productionItemCount > 0 && inProductionItems.length === 0 && (
-            <Card className="bg-green-100 border-green-300">
-              <CardHeader className="bg-green-300">{currentProductionLine?.name} production completed!</CardHeader>
-              <CardContent className="p-4">
-                <p>Well done!</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-        <div className="p-4 space-y-4">
-          <Card>
-            <CardHeader className="bg-blue-500 text-white flex justify-between items-center">
-              <CardTitle>Sales</CardTitle>
-              <Button onClick={handleEdit} className="bg-yellow-500 hover:bg-yellow-600">EDIT</Button>
-            </CardHeader>
-            <CardContent>
-              {showSales.length > 0 ? (
-                <ul className="space-y-2">
-                  {showSales.map((item) => (
-                    <li key={item.saleId} className="p-2 border-b border-gray-200">
-                      <p className="font-medium">{item.productName} - {item.quantity}</p>
-                      <p>{item.customerName} - {item.dateToDeliver}</p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No sales data available</p>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="bg-green-500 text-white flex justify-between items-center">
-              <CardTitle>Selection</CardTitle>
-              <Button onClick={handleSave} className="bg-yellow-500 hover:bg-yellow-600 ">SAVE</Button>
-            </CardHeader>
-            <CardContent>
-              <ul ref={parentRef} className="space-y-2">
-                {selectedItems.length > 0 ? (
-                  selectedItems.map((item, index) => (
-                    <li key={item.saleId} className="p-2 border-b border-gray-200 flex items-center justify-between">
-                      <div>
+                </CardContent>
+              </Card>
+            )}
+            {!isProcessing && productionItemCount > 0 && inProductionItems.length === 0 && (
+              <Card className="bg-green-100 border-green-300">
+                <CardHeader className="bg-green-300">{currentProductionLine?.name} production completed!</CardHeader>
+                <CardContent className="p-4">
+                  <p>Well done!</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+          <div className="flex space-x-4">
+            <Card className="flex-1">
+              <CardHeader className="bg-blue-500 text-white flex justify-between items-center">
+                <CardTitle>Sales</CardTitle>
+                <Button onClick={handleEdit} className="bg-yellow-500 hover:bg-yellow-600">EDIT</Button>
+              </CardHeader>
+              <CardContent>
+                {showSales.length > 0 ? (
+                  <ul className="space-y-2">
+                    {showSales.map((item) => (
+                      <li key={item.saleId} className="p-2 border-b border-gray-200">
                         <p className="font-medium">{item.productName} - {item.quantity}</p>
                         <p>{item.customerName} - {item.dateToDeliver}</p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button onClick={() => moveItem(index, -1)} disabled={index === 0} className="bg-gray-200 hover:bg-gray-300">
-                          <FontAwesomeIcon icon={faArrowUp} />
-                        </Button>
-                        <Button onClick={() => moveItem(index, 1)} disabled={index === selectedItems.length -1} className="bg-gray-200 hover:bg-gray-300">
-                          <FontAwesomeIcon icon={faArrowDown} />
-                        </Button>
-                      </div>
-                    </li>
-                  ))
+                      </li>
+                    ))}
+                  </ul>
                 ) : (
-                  <p>No items selected</p>
+                  <p>No sales data available</p>
                 )}
-              </ul>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="bg-gray-800 text-white flex justify-between items-center">
-              <CardTitle>In Production</CardTitle>
-              <Button onClick={handleStart} className="bg-blue-500 hover:bg-blue-600">START</Button>
-            </CardHeader>
-            <CardContent>
-              {inProductionItems.length > 0 ? (
-                <ul className="space-y-2">
-                  {inProductionItems.map(item => (
-                    <li key={item.saleId} className="p-2 border-b border-gray-200">
-                      <p className="font-medium">{item.productName} - {item.quantity}</p>
-                      <p>{item.customerName} - {item.dateToDeliver}</p>
-                    </li>
-                  ))}
+              </CardContent>
+            </Card>
+            <Card className="flex-1">
+              <CardHeader className="bg-green-500 text-white flex justify-between items-center">
+                <CardTitle>Selection</CardTitle>
+                <Button onClick={handleSave} className="bg-yellow-500 hover:bg-yellow-600 ">SAVE</Button>
+              </CardHeader>
+              <CardContent>
+                <ul ref={parentRef} className="space-y-2">
+                  {selectedItems.length > 0 ? (
+                    selectedItems.map((item, index) => (
+                      <li key={item.saleId} className="p-2 border-b border-gray-200 flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{item.productName} - {item.quantity}</p>
+                          <p>{item.customerName} - {item.dateToDeliver}</p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button onClick={() => moveItem(index, -1)} disabled={index === 0} className="bg-gray-200 hover:bg-gray-300">
+                            <FontAwesomeIcon icon={faArrowUp} />
+                          </Button>
+                          <Button onClick={() => moveItem(index, 1)} disabled={index === selectedItems.length -1} className="bg-gray-200 hover:bg-gray-300">
+                            <FontAwesomeIcon icon={faArrowDown} />
+                          </Button>
+                        </div>
+                      </li>
+                    ))
+                  ) : (
+                    <p>No items selected</p>
+                  )}
                 </ul>
-              ) : (
-                <p>No items in production</p>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+            <Card className="flex-1">
+              <CardHeader className="bg-gray-800 text-white flex justify-between items-center">
+                <CardTitle>In Production</CardTitle>
+                <Button onClick={handleStart} className="bg-blue-500 hover:bg-blue-600">START</Button>
+              </CardHeader>
+              <CardContent>
+                {inProductionItems.length > 0 ? (
+                  <ul className="space-y-2">
+                    {inProductionItems.map(item => (
+                      <li key={item.saleId} className="p-2 border-b border-gray-200">
+                        <p className="font-medium">{item.productName} - {item.quantity}</p>
+                        <p>{item.customerName} - {item.dateToDeliver}</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No items in production</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
-  )
+    )
 }
 
 export default ManagerViewPage
