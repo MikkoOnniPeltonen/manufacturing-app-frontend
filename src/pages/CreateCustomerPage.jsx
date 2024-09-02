@@ -1,5 +1,6 @@
 
 
+import { useState } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import CustomerForm from '../components/CustomerForm'
@@ -9,23 +10,34 @@ import {
     CardHeader,
     CardTitle,
   } from "@/components/ui/card"
-import { useToast } from '@/hooks/use-toast'
+import toast from 'react-hot-toast'
+import CustomAlertDialog from '../components/CustomAlertDialog'
 
 function CreateCustomerPage() {
 
     const navigate = useNavigate()
-    const toast = useToast()
+    const [errorDialogOpen, setErrorDialogOpen] = useState(false)
 
     const handleCreateCustomer = (newCustomer) => {
         axios.post(`${import.meta.env.VITE_BACKEND_URL}/customers`, newCustomer)
             .then(() => {
                 toast.success('New Customer added succesfully!')
-                navigate('/customers')
+                setTimeout(() => {
+                    navigate('/customers')
+                }, 2000)
             })
             .catch((err) => {
                 console.log(err)
-                toast.error('Failed to add new customer.')
+                setErrorDialogOpen(true)
             })
+    }
+
+    const handleErrorDialogClose = () => {
+        setErrorDialogOpen(false)
+    }
+
+    const handleRetry = () => {
+        setErrorDialogOpen(false)
     }
 
 
@@ -39,6 +51,16 @@ function CreateCustomerPage() {
                     <CustomerForm onSubmit={handleCreateCustomer} buttonText="Create Customer" />
                 </CardContent>
             </Card>  
+            <CustomAlertDialog 
+                isOpen={errorDialogOpen}
+                onOpenChange={setErrorDialogOpen}
+                title="Error"
+                description="Failed to add new customer. Please try again."
+                onCancel={handleErrorDialogClose}
+                onConfirm={handleRetry}
+                confirmText="Retry"
+                cancelText='Go back to form'
+            />
         </div>
     )
 

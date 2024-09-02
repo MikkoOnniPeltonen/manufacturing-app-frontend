@@ -8,8 +8,8 @@ import EditCustomerPage from './pages/EditCustomerPage'
 import Navbar from './components/Navbar'
 
 import { Routes, Route } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 import './App.css'
-
 
 
 function App() {
@@ -25,6 +25,7 @@ function App() {
         <Route path="/customers/:customerId/edit" element={<EditCustomerPage />} />
         <Route path="/customers/create" element={<CreateCustomerPage />} />
       </Routes>
+      <Toaster position='bottom-right' reverseOrder={false} />
     </>
   )
 }

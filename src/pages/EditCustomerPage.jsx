@@ -12,17 +12,19 @@ import {
     CardTitle,
   } from "@/components/ui/card"
 import { Button } from '@/components/ui/button'
-import { useToast } from '@/hooks/use-toast'
+import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
+import CustomAlertDialog from '../components/CustomAlertDialog'
 
 function EditCustomerPage() {
 
     const [customer, setCustomer] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [errorDialogOpen, setErrorDialogOpen] = useState(false)
+    const [errorMessage, setErrorMessage] = useState('')
 
     const { customerId } = useParams()
     const navigate = useNavigate()
-    const toast = useToast()
 
     useEffect(() => {
 
@@ -33,7 +35,8 @@ function EditCustomerPage() {
         })
         .catch((err) => {
             console.log(err)
-            toast.error("Failed to fetch customer data.")
+            setErrorMessage('Failed to fetch customer data.')
+            setErrorDialogOpen(true)
             setLoading(false)
         })
 
@@ -43,26 +46,39 @@ function EditCustomerPage() {
         axios.put(`${import.meta.env.VITE_BACKEND_URL}/customers/${customerId}`, updatedCustomer)
             .then(() => {
                 toast.success('Customer updated succesfully!')
-                navigate(`/customers/${customerId}`)
+                setTimeout(() => {
+                    navigate(`/customers/${customerId}`)
+                }, 2000)
             })
             .catch((err) => {
                 console.log(err)
-                toast.error('Failed to update customer.')
+                setErrorMessage('Failed to update customer.')
+                setErrorDialogOpen(true)
             })
     }
 
     function handleDeleteCustomer() {
-        if (window.confirm('Are you sure you want to delete this customer?')) {
-            axios.delete(`${import.meta.env.VITE_BACKEND_URL}/customers/${customerId}`)
-                .then(() => {
-                    toast.success('Customer deleted!')
-                    navigate('/customers')
-                })
-                .catch((err) => {
-                    console.log(err)
-                    toast.error('Failed to delete customer.')
-                })
-        }
+        setErrorMessage('Are you sure you want to delete this customer?')
+        setErrorDialogOpen(true)
+    }
+
+    const handleErrorDialogClose = () => {
+        setErrorDialogOpen(false)
+    }
+
+    const handleDeleteConfirm = () => {
+        axios.delete(`${import.meta.env.VITE_BACKEND_URL}/customers/${customerId}`)
+        .then(() => {
+            toast.success('Customer deleted!')
+            setTimeout(() => {
+                navigate('/customers')
+            }, 2000)
+        })
+        .catch((err) => {
+            console.log(err)
+            setErrorMessage('Failed to delete customer.')
+            setErrorDialogOpen(true)
+        })
     }
 
     if (loading) {
@@ -86,6 +102,17 @@ function EditCustomerPage() {
                     </CardContent>
                 </Card>
             )}
+
+            <CustomAlertDialog 
+                isOpen={errorDialogOpen}
+                onOpenChange={setErrorDialogOpen}
+                title="Confirmation"
+                description={errorMessage}
+                onCancel={handleErrorDialogClose}
+                onConfirm={handleDeleteConfirm}
+                confirmText='Delete'
+                cancelText='Cancel'
+            />
         </div>
     )
 }

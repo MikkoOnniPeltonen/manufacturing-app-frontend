@@ -237,8 +237,8 @@ function HomePage() {
   return (
     <div className="p-4 space-y-4">
       {loading ? (
-        <Card className="p-4 flex items-center justify-center">
-          <Progress value={progress} className="w-32"/>
+        <Card className="p-4 flex items-center justify-center bg-gray-100">
+          <Progress value={progress} className="w-64 bg-blue-200"/>
         </Card>
       ) : (
         <>

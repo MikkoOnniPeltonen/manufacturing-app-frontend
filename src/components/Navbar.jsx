@@ -20,23 +20,22 @@ function Navbar() {
 
   useEffect(() => {
 
-    if (customerId) {
-
-      axios.get(`${import.meta.env.VITE_BACKEND_URL}/customers/${customerId}`)
-        .then((foundCustomer) => {
-          setCurrentCustomer(foundCustomer.data)
-        })
-        .catch((err) => {
-          console.log(err)
-        })
-    }
+    axios.get(`${import.meta.env.VITE_BACKEND_URL}/customers/${customerId}`)
+    .then((foundCustomer) => {
+      setCurrentCustomer(foundCustomer.data)
+    })
+    .catch((err) => {
+      console.log(err)
+    })
     
   }, [customerId])
 
   console.log('customer id is: ', customerId)
   console.log(currentCustomer)
+  
 
   const pathSegments = location.pathname.split('/').filter(Boolean)
+  console.log(pathSegments)
 
   return (
     <header>
@@ -56,49 +55,41 @@ function Navbar() {
           {pathSegments.includes('customers') && (
             <>
               {customerId ? (
-                pathSegments.includes('edit') ? (
-                  <>
-                    <BreadcrumbEllipsis />
-                    <BreadcrumbSeparator />
-                    <BreadcrumbItem>
-                      <Link to={`/customers/${customerId}`}>
-                        {currentCustomer ? currentCustomer.name : 'Customer'}
-                      </Link>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator />
-                    <BreadcrumbItem>
-                      <BreadcrumbPage>Edit</BreadcrumbPage>
-                    </BreadcrumbItem>
-                  </>
-                ) : (
-                  <>
+                <>
+                  {pathSegments.includes('edit') ? (
+                    <>
+                      <BreadcrumbEllipsis />
+                      <BreadcrumbSeparator />
+                      <BreadcrumbItem>
+                        <Link to={`/customers/${customerId}`}>
+                        {currentCustomer.name}
+                        </Link>
+                      </BreadcrumbItem>
+                    </> 
+                  ) : (
                     <BreadcrumbItem>
                       <Link to='/customers'>All Customers</Link>
                     </BreadcrumbItem>
-                    <BreadcrumbSeparator />
-                    <BreadcrumbItem>
-                      <BreadcrumbPage>
-                        {currentCustomer ? currentCustomer.name : 'Customer'}
-                      </BreadcrumbPage>
-                    </BreadcrumbItem>
-                  </>
-                )
-              ) : (
-                pathSegments.includes('create') ? (
-                  <>
-                    <BreadcrumbItem>
-                      <Link to='/customers'>All Customers</Link>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator />
-                    <BreadcrumbItem>
-                      <BreadcrumbPage>Create</BreadcrumbPage>
-                    </BreadcrumbItem>
-                  </>
-                ) : (
+                  )}
+                  <BreadcrumbSeparator />
                   <BreadcrumbItem>
-                    <BreadcrumbPage>All Customers</BreadcrumbPage>
+                    <BreadcrumbPage>{pathSegments.includes('edit') ? 'Edit' : currentCustomer.name}</BreadcrumbPage>
                   </BreadcrumbItem>
-                ) 
+                </>
+              ) : (
+                <>
+                  {pathSegments.includes('create') && (
+                    <>
+                      <BreadcrumbItem>
+                        <Link to='/customers'>All Customers</Link>
+                      </BreadcrumbItem>
+                      <BreadcrumbSeparator />
+                    </>
+                  )}
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{pathSegments.includes('create') ? 'Create' : 'All Customers'}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </>
               )}
             </>
           )}

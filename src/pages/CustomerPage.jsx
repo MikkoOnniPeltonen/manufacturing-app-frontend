@@ -40,8 +40,8 @@ function CustomerPage() {
 
   const [currentCustomer, setCurrentCustomer] = useState(null)
 
-  const [setProducts] = useState([])
-  const [setProductionLines] = useState([])
+  const [products, setProducts] = useState([])
+  const [productionLines, setProductionLines] = useState([])
   const [allCustomers, setAllCustomers] = useState([])
 
   const [selection, setSelection] = useState([])
@@ -68,14 +68,14 @@ function CustomerPage() {
         setAllCustomers(allCustomersResponse.data)
         setProducts(productsResponse.data)
 
-        const foundCustomer = allCustomers.find(oneCustomer => oneCustomer.id === customerId)
+        const foundCustomer = allCustomers.find(oneCustomer => oneCustomer.id == customerId)
         setCurrentCustomer(foundCustomer)
 
-        if (foundCustomer) {
+        if (currentCustomer) {
           const { displaySelection, data, chartData } = processCustomerData(
-            foundCustomer,
-            productsResponse.data,
-            productionLinesResponse.data
+            currentCustomer,
+            products,
+            productionLines
           )
 
           setSelection(displaySelection)
@@ -117,6 +117,7 @@ function CustomerPage() {
         displaySelection.push({
           id: line.id,
           productionLine: line.name,
+          productionLogo: line.product_logoURL,
           productsByProductionLine: groupedByProductionLine[line.id] || [{id: line.id, text: 'No products selected.'}]
         })
       })
@@ -125,6 +126,7 @@ function CustomerPage() {
         displaySelection.push({
           id: line.id,
           productionLine: line.name,
+          productionLogo: line.product_logoURL,
           productsByProductionLine: [{id: line.id, text: 'No products selected for this production line.'}]
         })
       })
@@ -263,7 +265,15 @@ function CustomerPage() {
                       <Accordion type="single" collapsible className="w-full">
                         {selection.map(oneItem => (
                           <AccordionItem key={oneItem.id} value={`item-${oneItem.id}`} className="border-b border-gray-200">
-                            <AccordionTrigger className="text-sm font-medium text-gray-700 hover:text-blue-600">{oneItem.productionLine}</AccordionTrigger>
+                            <AccordionTrigger 
+                              className="text-sm font-medium text-gray-700 hover:text-blue-600 relative bg-cover bg-center bg-no-repeat"
+                              style={{
+                                backgroundImage: `url('${oneItem.productionLogo}')`,
+                                opacity: 0.8
+                              }}
+                            >
+                              {oneItem.productionLine}
+                            </AccordionTrigger>
                             <AccordionContent className="mt-2 text-gray-600">
                               {oneItem.productsByProductionLine.map(oneObject => (
                                   oneObject.text ? (
