@@ -80,3 +80,7 @@
 body {
   background-color: #F5F5F5;
 }
+
+.text-shadow {
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}

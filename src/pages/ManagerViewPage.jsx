@@ -1,6 +1,6 @@
 
 import axios from 'axios'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -17,243 +17,219 @@ import { Loader2 } from 'lucide-react'
 
 function ManagerViewPage() {
 
-  const [productionLines, setProductionLines] = useState([])
-  const [allSales, setAllSales] = useState([])
-
-  const [productionLineId, setProductionLineId] = useState(null)
-  const [showSales, setShowSales] = useState([])
-  const [currentProductionLine, setCurrentProductionLine] = useState(null)
-
-  const [productionItemCount, setProductionItemCount] = useState(0)
-
-  const [selectedItems, setSelectedItems] = useState([])
-  const [inProductionItems, setInProductionItems] = useState([])
+  const [productionDataMap, setProductionDataMap] = useState(new Map())
+  const [selectedLineId, setSelectedLineId] = useState(null)
 
   const [isProcessing, setIsProcessing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   const parentRef = useRef(null)
-
   useAutoAnimate(parentRef)
 
-  async function fetchData() {
-
-    try {
-      const productionLinesResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/productionLines`)
-      setProductionLines(productionLinesResponse.data)
-
-      const allSalesResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/sales`)
-      setAllSales(allSalesResponse.data)
-
-    } catch (err) {
-      console.log(err)
-    }
-
-  }
-
+  // INITIAL DATA FETCH FOR PRODUCTION LINES
   useEffect(() => {
-
-    fetchData()
+    fetchProductionLines()
   }, [])
 
-
+  // FETCH SALES AND PRODUCTION ITEMS FOR SINGLE SELECTED PRODUCTION LINE
   useEffect(() => {
-
-    if (productionLineId) {
-      const foundProductionLine = productionLines.find(line => line.id === productionLineId)
-      setCurrentProductionLine(foundProductionLine)
-      const productionLineSale = allSales.find(sale => sale.id === productionLineId)
-      
-      if (productionLineSale) {
-        console.log('Sales based on production line: ', productionLineSale)
-        const filteredSales = productionLineSale.listedItems.map(oneSale => oneSale)
-        setShowSales(filteredSales) 
-      }
-      setSelectedItems([])
-      axios.get(`${import.meta.env.VITE_BACKEND_URL}/productions/${productionLineId}`)
-        .then((response) => {
-          setInProductionItems(response.data.inProductionItems)
-          setProductionItemCount(response.data.inProductionItems.length)
-        })
-        .catch((err) => {
-         console.log(err)
-        })
+    if (selectedLineId) {
+      fetchDataForProductionLine(selectedLineId)
     }
-  }, [productionLineId])
+  }, [selectedLineId])
 
-
-  // MOVE ITEMS IN EDIT
-  const moveItem = (index, direction) => {
-    const newItems = [...selectedItems]
-    const [movedItem] = newItems.splice(index, 1)
-    newItems.splice(index + direction, 0, movedItem)
-    setSelectedItems(newItems)
+  async function fetchProductionLines() {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/productionLines`)
+      const newProductionDataMap = new Map(
+      response.data.map(line => [line.id, { productionLine: line }])
+      )
+      setProductionDataMap(newProductionDataMap)
+    } catch (error) {
+      console.error('Error fetching production lines: ', error)
+    }
   }
 
-  // CHECK IDENTICAL LISTS
-  function checkSalesArrays(salesItemsByProduction, totalPatchedProducts) {
+  // FUNCTION TO FETCH DATA FOR A SPECIFIC PRODUCTION LINE
+  async function fetchDataForProductionLine(lineId) {
+    try {
+      const [salesResponse, productionsResponse] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/sales/${lineId}`),
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/productions/${lineId}`)
+      ])
 
-    if (salesItemsByProduction.length !== totalPatchedProducts.length) {
+      setProductionDataMap(prevMap => {
+        const newMap = new Map(prevMap)
+        const lineData = newMap.get(lineId)
+        newMap.set(lineId, {
+          ...lineData,
+          showSales: salesResponse.data.listedItems || [],
+          selectedItems: [],
+          inProductionItems: productionsResponse.data.inProductionItems || [],
+          productionItemCount: productionsResponse.data.inProductionItems.length || 0
+        })
+        return newMap
+      })
+    } catch (error) {
+        console.error('Error fetching data: ', error)
+    }
+  
+  }
+
+  // MOVE ITEMS IN EDIT
+  const moveItem = useCallback((index, direction) => {
+    setProductionDataMap(prevMap => {
+      const newMap = new Map(prevMap)
+      const lineData = newMap.get(selectedLineId)
+      const newItems = [...lineData.selectedItems]
+      const [movedItem] = newItems.splice(index, 1)
+      newItems.splice(index + direction, 0, movedItem)
+      newMap.set(selectedLineId, { ...lineData, selectedItems: newItems })
+      return newMap
+    })
+  }, [selectedLineId])
+
+  // CHECK IDENTICAL LISTS
+  const areArraysIdentical = useCallback((array1, array2) => {
+
+    if (array1.length !== array2.length) {
       return false
     }
   
-    const saleIds1 = new Set(salesItemsByProduction.map(sale => sale.saleId))
-    const saleIds2 = new Set(totalPatchedProducts.map(sale => sale.saleId))
+    const saleIds1 = new Set(array1.map(sale => sale.saleId))
+    const saleIds2 = new Set(array2.map(sale => sale.saleId))
     
     if (saleIds1.size !== saleIds2.size) {
       return false
     }
-  
-    for (const id of saleIds1) {
-      if (!saleIds2.has(id)) {
-        return false
-      }
-    }
-    return true
-  }
+    return Array.from(saleIds1).every(id => saleIds2.has(id))
+  }, [])
 
   
   // HANDLE EDIT
-  const handleEdit = () => {
-
-    if (selectedItems.length > 0) {
+  const handleEdit = useCallback(async () => {
+    const lineData = productionDataMap.get(selectedLineId)
+    if (!lineData || lineData.selectedItems.length > 0 || !lineData.productionLine.hasSales) {
       return
     }
 
-    if(currentProductionLine.hasSales) {
-      axios.patch(`${import.meta.env.VITE_BACKEND_URL}/productionLines/${productionLineId}`, {
+    try {
+      await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/productionLines/${selectedLineId}`, {
         hasSales: false
       })
-      .then(() => {
-        return axios.get(`${import.meta.env.VITE_BACKEND_URL}/productionLines`)
+      const updatedLines = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/productionLines`)
+    
+      setProductionDataMap(prevMap => {
+        const newMap = new Map(prevMap)
+        updatedLines.data.forEach(line => {
+          const existingData = newMap.get(line.id)
+          newMap.set(line.id, { ...existingData, productionLine: line })
+        })
+        const lineData = newMap.get(selectedLineId)
+        newMap.set(selectedLineId, { ...lineData, selectedItems: lineData.showSales })
+        return newMap
       })
-      .then((updatedProductionLines) => {
-        setProductionLines(updatedProductionLines.data)
-        setSelectedItems(showSales)
-      })
-      .catch((err) => {
-        console.log(err)
-      })
-    } 
-  }
+    } catch (error) {
+      console.error('Error in editing production line sales: ', error)
+    }
+  }, [productionDataMap, selectedLineId])
 
 
   // HANDLE SAVE OF EDITED LIST
-  async function handleSave() {
-
-    if (selectedItems.length === 0) {
+  const handleSave = useCallback(async () => {
+    const lineData = productionDataMap.get(selectedLineId)
+    if (!lineData || lineData.selectedItems.length === 0) {
       return
     }
-    setIsSaving(true)
 
-    const totalPatchedProducts = []
-    const salesItemsByProduction = []
+    setIsSaving(true)
 
     try {
 
-      const patchingData = await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/productions/${productionLineId}`, {
-        inProductionItems: selectedItems
+      const patchingResponse = await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/productions/${selectedLineId}`, {
+        inProductionItems: lineData.selectedItems
       })
-      totalPatchedProducts.push(...patchingData.data)
+      const newProductionList = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/productions/${selectedLineId}`)
 
-      const newProductionList = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/productions/${productionLineId}`)
-
-      
-      if (newProductionList.data.inProductionItems.length > 0) {
-          salesItemsByProduction.push(...newProductionList.data.inProductionItems)
-        }
-      
-      console.log('patched products: ', totalPatchedProducts)
-      console.log('updated production lists: ', salesItemsByProduction)
-
-      const haveIdenticalSales = checkSalesArrays(salesItemsByProduction, totalPatchedProducts)
-      if (!haveIdenticalSales) {
+      if (!areArraysIdentical(newProductionList.data.inProductionItems, patchingResponse.data.inProductionItems)) {
         throw new Error('Sales are not identical!')
       }
 
-      setInProductionItems(newProductionList.data.inProductionItems)
-      setSelectedItems([])
-      setIsSaving(false)
-      
+      setProductionDataMap(prevMap => {
+        const newMap = new Map(prevMap)
+        const lineData = newMap.get(selectedLineId)
+        newMap.set(selectedLineId, {
+          ...lineData, 
+          inProductionItems: newProductionList.data.inProductionItems,
+          selectedItems: []
+        })
+        return newMap
+      })
     } catch (error) {
-      console.log('Error saving data: ', error)
+      console.error('Error saving data: ', error)
+    } finally {
       setIsSaving(false)
     }
-  }
+
+  }, [productionDataMap, selectedLineId, areArraysIdentical])
+
+
+  const processItems = useCallback(async (items) => {
+    const lineData = productionDataMap.get(selectedLineId)
+
+    for (const item of items) {
+      try {
+        const timeToProcess = (item.quantity / lineData.productionLine.capacity) * 10000
+        await new Promise(resolve => setTimeout(resolve, timeToProcess))
+
+        await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/productions/${selectedLineId}`, {
+          inProductionItems: items.slice(1)
+        })
+
+        const customerResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/customers/${item.customerId}`)
+        await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/customers/${item.customerId}`, {
+          delivered: [...customerResponse.data.delivered, { ...item, status: true }]
+        })
+
+        setProductionDataMap(prevMap => {
+          const newMap = new Map(prevMap)
+          const lineData = newMap.get(selectedLineId)
+          newMap.set(selectedLineId, { ...lineData, inProductionItems: items.slice(1) })
+          return newMap
+        })
+
+      } catch (error) {
+        console.error('Error in processing item: ', error)
+        break
+      }
+    }
+    setIsProcessing(false)
+  }, [productionDataMap, selectedLineId])
+
 
   // BEGIN PRODUCTION
-  async function handleStart() {
-
-    if (isProcessing) {
+  const handleStart = useCallback(() => {
+    const lineData = productionDataMap.get(selectedLineId)
+    if (!lineData || isProcessing || lineData.inProductionItems.length === 0) {
       return
     }
 
     setIsProcessing(true)
+    processItems(lineData.inProductionItems)
+  }, [productionDataMap, selectedLineId, isProcessing, processItems])
 
-    try {
+  const lineData = productionDataMap.get(selectedLineId) || {}
 
-      if (inProductionItems.length === 0) {
-        setIsProcessing(false)
-        return
-      }
+  const { productionLine = {}, inProductionItems = [], productionItemCount = 0, showSales = [], selectedItems = [] } = lineData
   
-      const processItem = async (item, remainingItems) => {
-        
-        try {
-
-          if (!currentProductionLine) {
-            console.error("Production line not found")
-            setIsProcessing(false)
-            return
-          }
-
-          const timeToProcess = (item.quantity / currentProductionLine.capacity) * 10000
-  
-          await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/productions/${productionLineId}`, {
-            inProductionItems: remainingItems
-          })
-
-          const customerResponse =  await axios.get(`${import.meta.env.VITE_BACKEND_URL}/customers/${item.customerId}`)
-
-          item.status = true
-
-          await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/customers/${item.customerId}`, {
-            delivered: [...customerResponse.data.delivered, item]
-          })
-
-          setInProductionItems(remainingItems)
-
-          if (remainingItems.length > 0) {
-            setTimeout(() => processItem(remainingItems[0], remainingItems.slice(1)), timeToProcess)
-          } else {
-            setIsProcessing(false)
-          }
-
-        } catch (error) {
-          console.log('Error in patching data to customers: ', error)
-          setIsProcessing(false)
-          console.warn('isProcessing state was set to false')
-        }
-      }
-
-      processItem(inProductionItems[0], inProductionItems.slice(1))
-
-    } catch (error) {
-      console.log('Error in production: ', error)
-      setIsProcessing(false)
-      console.warn('isProcessing state was set to false')
-    }
-  }
-
-
   return (
       <div className="p-4 flex space-y-4">
         <aside className="flex flex-col gap-4 w-1/4">
-          {productionLines.map((productionLine) => (
-            <Card key={productionLine.id} onClick={() => {setProductionLineId(productionLine.id)}} disabled={isProcessing || isSaving} className="relative overflow-hidden rounded-xl shadow-lg cursor-pointer transition-transform transform hover:scale-105">
-              <CardHeader className="bg-gray-800 text-white p-4">{productionLine.name}</CardHeader>
+          {[...productionDataMap.entries()].map(([id, productionLineData]) => (
+            <Card key={id} onClick={() => {setSelectedLineId(id)}} disabled={isProcessing || isSaving} className="relative overflow-hidden rounded-xl shadow-lg cursor-pointer transition-transform transform hover:scale-105">
+              <CardHeader className="bg-gray-800 text-white p-4">{productionLineData.productionLine.name}</CardHeader>
               <CardContent className="p-2">
-                <img src={productionLine.product_logoURL} alt={`Image of ${productionLine.name}`} className="w-full h-32 object-cover"/>
+                <img src={productionLineData.productionLine.product_logoURL} alt={`Image of ${productionLineData.productionLine.name}`} className="w-full h-32 object-cover"/>
               </CardContent>
             </Card>
           ))}
@@ -262,7 +238,7 @@ function ManagerViewPage() {
           <div className="space-y-4">
             {isSaving && (
               <Card className="bg-yellow-100 borger-yellow-300">
-                <CardHeader className="bg-yellow-300">Loading..</CardHeader>
+                <CardHeader className="bg-yellow-300">Saving changes...</CardHeader>
                 <CardContent className="flex items-center justify-center p-4">
                   <Loader2 className="animate-spin mr-2"/>
                   <p>Please wait</p>
@@ -271,7 +247,7 @@ function ManagerViewPage() {
             )}
             {isProcessing && (
               <Card className="bg-blue-100 border-blue-300">
-                <CardHeader className="bg-blue-300">{currentProductionLine?.name} in progress</CardHeader>
+                <CardHeader className="bg-blue-300">{productionLine?.name} in progress</CardHeader>
                 <CardContent className="p-4">
                   <p>{inProductionItems.length} / {productionItemCount}</p>
                 </CardContent>
@@ -279,7 +255,7 @@ function ManagerViewPage() {
             )}
             {!isProcessing && productionItemCount > 0 && inProductionItems.length === 0 && (
               <Card className="bg-green-100 border-green-300">
-                <CardHeader className="bg-green-300">{currentProductionLine?.name} production completed!</CardHeader>
+                <CardHeader className="bg-green-300">{productionLine?.name} production completed!</CardHeader>
                 <CardContent className="p-4">
                   <p>Well done!</p>
                 </CardContent>
@@ -313,9 +289,9 @@ function ManagerViewPage() {
                 <Button onClick={handleSave} className="bg-yellow-500 hover:bg-yellow-600 ">SAVE</Button>
               </CardHeader>
               <CardContent>
-                <ul ref={parentRef} className="space-y-2">
-                  {selectedItems.length > 0 ? (
-                    selectedItems.map((item, index) => (
+                {selectedItems.length > 0 ? (
+                  <ul ref={parentRef} className="space-y-2">
+                    {selectedItems.map((item, index) => (
                       <li key={item.saleId} className="p-2 border-b border-gray-200 flex items-center justify-between">
                         <div>
                           <p className="font-medium">{item.productName} - {item.quantity}</p>
@@ -330,11 +306,11 @@ function ManagerViewPage() {
                           </Button>
                         </div>
                       </li>
-                    ))
-                  ) : (
-                    <p>No items selected</p>
-                  )}
-                </ul>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No items selected</p>
+                )}
               </CardContent>
             </Card>
             <Card className="flex-1">

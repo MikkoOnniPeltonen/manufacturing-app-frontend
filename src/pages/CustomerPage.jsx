@@ -29,24 +29,18 @@ import {
 } from "@/components/ui/tabs"
 
 import axios from 'axios'
-import { useState, useEffect, useMemo } from 'react'
+import { lazy, Suspense, useState, useEffect, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 
-import OrderTable from '../components/OrderTable'
-import OrderChart from '../components/OrderChart'
+import LoadingSpinner from '../components/LoadingSpinner'
+
+const OrderTable = lazy(() => import('../components/OrderTable'))
+const OrderChart = lazy(() => import('../components/OrderChart'))
 
 
 function CustomerPage() {
 
-  const [currentCustomer, setCurrentCustomer] = useState(null)
-
-  const [products, setProducts] = useState([])
-  const [productionLines, setProductionLines] = useState([])
-  const [allCustomers, setAllCustomers] = useState([])
-
-  const [selection, setSelection] = useState([])
-  const [showData, setShowData] = useState([])
-  const [showChartData, setShowChartData] = useState([])
+  const [dataMap, setDataMap] = useState(new Map()) 
 
   const [sorting, setSorting] = useState([])
   const [columnFilters, setColumnFilters] = useState([])
@@ -55,108 +49,82 @@ function CustomerPage() {
 
   const { customerId } = useParams()
 
+  const idAsNumber = Number(customerId)
+
+
   useEffect(() => {
-
-    const fetchDataAndBuildPage = async () => {
-
-      try {
-        const productionLinesResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/productionLines`)
-        const allCustomersResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/customers`)
-        const productsResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/products`)
-
-        setProductionLines(productionLinesResponse.data)
-        setAllCustomers(allCustomersResponse.data)
-        setProducts(productsResponse.data)
-
-        const foundCustomer = allCustomers.find(oneCustomer => oneCustomer.id == customerId)
-        setCurrentCustomer(foundCustomer)
-
-        if (currentCustomer) {
-          const { displaySelection, data, chartData } = processCustomerData(
-            currentCustomer,
-            products,
-            productionLines
-          )
-
-          setSelection(displaySelection)
-          setShowData(data)
-          setShowChartData(chartData)
-        }
-
-      } catch (error) {
-        console.log('Error fetching data: ', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchDataAndBuildPage()
+    fetchData()
   }, [customerId])
 
-  const processCustomerData = (customer, products, productionLines) => {
-    const displaySelection = []
-    const data = []
-  
-    // ACCORDION CONTENT
-    if (customer.selected_products.length > 0) {
-      const productMap = new Map(products.map(p => [p.id, p]))
 
-      const productInfo = customer.selected_products.map((oneProduct) => 
-        productMap.get(oneProduct.value)
-      )
-    
-      const groupedByProductionLine = productInfo.reduce((acc, product) => {
-        if (!acc[product.productionLineId]) {
-          acc[product.productionLineId] = []
-        }
-        acc[product.productionLineId].push(product)
-        return acc
-      }, {})
+  async function fetchData() {
+    setLoading(true)
 
-      productionLines.forEach((line) => {
-        displaySelection.push({
-          id: line.id,
-          productionLine: line.name,
-          productionLogo: line.product_logoURL,
-          productsByProductionLine: groupedByProductionLine[line.id] || [{id: line.id, text: 'No products selected.'}]
-        })
-      })
-    } else {
-      productionLines.forEach((line) => {
-        displaySelection.push({
-          id: line.id,
-          productionLine: line.name,
-          productionLogo: line.product_logoURL,
-          productsByProductionLine: [{id: line.id, text: 'No products selected for this production line.'}]
-        })
-      })
+    try {
+
+      const [allCustomersResponse, productionLinesResponse, productsResponse] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/customers`),
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/productionLines`),
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/products`)
+      ])
+
+      const newDataMap = new Map()
+      newDataMap.set('allCustomers', allCustomersResponse.data)
+      newDataMap.set('currentCustomer', allCustomersResponse.data.find(customer => customer.id === idAsNumber))
+      newDataMap.set('productionLines', productionLinesResponse.data)
+      newDataMap.set('products', new Map(productsResponse.data.map(p => [p.id, p])))
+
+      setDataMap(newDataMap)
+    } catch (error) {
+      console.error('Error fetching data: ', error)
+    } finally {
+      setLoading(false)
     }
-    
+  }
+
+  const processCustomerData = useMemo(() => {
+    if(!dataMap.has('currentCustomer')) return { displaySelection: [], tableData: [], chartData: [] }
+
+    const customer = dataMap.get('currentCustomer')
+    const products = dataMap.get('products')
+    const productionLines = dataMap.get('productionLines')
+    const allCustomers = dataMap.get('allCustomers')
+
+    // ACCORDION CONTENT
+    const displaySelection = productionLines.map(line => {
+      const productsForLine = customer.selected_products
+        .filter(productId => products.get(productId)?.productionLineId === line.id)
+        .map(productId => products.get(productId))
+
+      return {
+        id: line.id,
+        productionLine: line.name,
+        productionLogo: line.product_logoURL,
+        productsByProductionLine: productsForLine.length > 0 ? productsForLine : [{ id: line.id, text: 'No products selected for this production line.' }]
+      }
+
+    })
 
     // TABLE CONTENT
-    if (customer.delivered.length > 0) {
-      customer.delivered.forEach((oneOrder) => {
-        data.push(oneOrder)
-      })
-    }
+    const tableData = customer.delivered || []
 
     // CHART CONTENT
     const customersWithOrders = allCustomers.filter((oneCustomer) => {
       return (
-        oneCustomer.delivered.length > 0 && oneCustomer.id !== customerId
+        oneCustomer.delivered.length > 0 && oneCustomer.id !== idAsNumber
       )
     })
-      
+
     const productionLineMap = productionLines.reduce((acc, line) => {
       acc[line.id] = line.name
       return acc
     }, {})
-      
+
     const ordersByProductionLine = customersWithOrders.flatMap(customer => customer.delivered)
       
     const currentCustomerOrders = customer.delivered.reduce((acc, product) => {
       const productionLineName = productionLineMap[product.productionLineId]
-      
+
       if (!acc[productionLineName]) {
         acc[productionLineName] = 0
       }
@@ -164,7 +132,7 @@ function CustomerPage() {
       acc[productionLineName] += product.quantity
       return acc
     }, {})
-      
+
     const productGroup = ordersByProductionLine.reduce((acc, oneOrder) => {
       const productionLineName = productionLineMap[oneOrder.productionLineId]
       
@@ -177,153 +145,153 @@ function CustomerPage() {
       
       return acc
     }, {})
-      
+
     const chartData = Object.entries(productGroup).map(([productionLine, { totalQuantity, customerSet}]) => ({
       productionLine,
       average: totalQuantity / customerSet.size,
       orders: currentCustomerOrders[productionLine] || 0
     }))
-        
-    return { displaySelection, data, chartData }
-  }
 
-  const columns = useMemo(
-    () => [
-      { accessorKey: 'saleId', header: 'Id' },
-      { accessorKey: 'productName', header: 'Product' },
-      { 
-        accessorKey: 'status', 
-        header: 'Status',
-        cell: ({ getValue }) => {
-          const status = getValue()
+    return { displaySelection, tableData, chartData }
+  }, [dataMap])
 
-          return status ? 'Delivered' : 'Pending'
-        }
-      },
-      { 
-        accessorKey: 'dateToDeliver', 
-        header: ({ column }) => {
-          return (
-            <Button 
-              variant="ghost" 
-              onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            >
-            Date
-            <ArrowUpDown className='ml-2 h-4 w-4' />
-            </Button>
-          )
-        }
-      },
-      { accessorKey: 'quantity', header: 'Amount' }
-    ], 
-    []
-  )
+
+  const columns = useMemo(() => [
+    { accessorKey: 'saleId', header: 'Id' },
+    { accessorKey: 'productName', header: 'Product' },
+    { 
+      accessorKey: 'status', 
+      header: 'Status',
+      cell: ({ getValue }) => getValue() ? 'Delivered' : 'Pending'
+    },
+    { 
+      accessorKey: 'dateToDeliver', 
+      header: ({ column }) => (
+        <Button 
+          variant="ghost" 
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Date
+          <ArrowUpDown className='ml-2 h-4 w-4' />
+        </Button>
+      )
+    },
+    { accessorKey: 'quantity', header: 'Amount' }
+  ], [])
 
   const table = useReactTable({
-    data: showData,
+    data: processCustomerData.tableData,
     columns,
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
-    state: {
-      sorting,
-      columnFilters
-    } 
+    state: { sorting, columnFilters } 
   })
+
+  if (loading) {
+    return <div className="p-6 bg-gray-100 min-h-screen">Loading...</div>
+  }
+
+  const currentCustomer = dataMap.get('currentCustomer')
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        currentCustomer && (
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="flex-1 md:mr-6">
-              <article className="mb-6">
-                <Card className="shadow-lg rounded-lg overflow-hidden border border-gray-200 bg-white">
-                  <CardHeader className="p-4 border-b border-gray-200">
-                    <CardTitle className="text-lg font-semibold text-gray-800">{currentCustomer.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-4">
-                      <img src={currentCustomer.customer_logoURL} alt={`pic not loading`} className="w-16 h-16 rounded-full border" />
-                      <div>
-                        <p className="text-sm text-gray-600">Contact: {currentCustomer.contact}</p>
-                        <p className="text-sm text-gray-600">Address: {currentCustomer.address}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <section className="mt-6">
-                  <Card className="shadow-lg rounded-lg overflow-hidden border border-gray-200 bg-white">
-                    <CardHeader className="p-4 border-b border-gray-200">
-                      <CardTitle className="text-lg font-semibold text-gray-800">Selected Products</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                      <Accordion type="single" collapsible className="w-full">
-                        {selection.map(oneItem => (
-                          <AccordionItem key={oneItem.id} value={`item-${oneItem.id}`} className="border-b border-gray-200">
-                            <AccordionTrigger 
-                              className="text-sm font-medium text-gray-700 hover:text-blue-600 relative bg-cover bg-center bg-no-repeat"
-                              style={{
-                                backgroundImage: `url('${oneItem.productionLogo}')`,
-                                opacity: 0.8
-                              }}
-                            >
-                              {oneItem.productionLine}
-                            </AccordionTrigger>
-                            <AccordionContent className="mt-2 text-gray-600">
-                              {oneItem.productsByProductionLine.map(oneObject => (
-                                  oneObject.text ? (
-                                    <p key={oneObject.id} className="py-1">{oneObject.text}</p>
-                                  ) : (
-                                    <div key={oneObject.id} className="py-2">
-                                      <p className="font-medium">{oneObject.name}</p>
-                                      <hr className="my-2" />
-                                      <p className="text-sm">{oneObject.description}</p>
-                                    </div>
-                                  )
-                              ))}
-                            </AccordionContent>
-                          </AccordionItem>
-                        ))}
-                      </Accordion>
-                    </CardContent>
-                  </Card>
-                </section>
-              </article>
-            </div>
-            <div className="flex-1 md:ml-6">
-              <article className="p-6 bg-white rounded-lg shadow-md">
+      <div className="flex flex-col md:flex-row gap-6">
+        <div className="flex-1 md:mr-6">
+          <article className="mb-6">
+            <Card className="shadow-lg rounded-lg overflow-hidden border border-gray-200 bg-white">
+              <CardHeader className="p-4 border-b border-gray-200">
+                <CardTitle className="text-lg font-semibold text-gray-800">{currentCustomer.name}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-4">
+                  <img src={currentCustomer.customer_logoURL} alt={`pic not loading`} className="w-16 h-16 rounded-full border" />
+                  <div className="">
+                    <p className="text-sm text-gray-600">Contact: {currentCustomer.contact}</p>
+                    <p className="text-sm text-gray-600">Address: {currentCustomer.address}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <section className="mt-6">
+              <Card className="shadow-lg rounded-lg overflow-hidden border border-gray-200 bg-white">
+                <CardHeader className="p-4 border-b border-gray-200">
+                  <CardTitle className="text-lg font-semibold text-gray-800">Selected Products</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <Accordion type="single" collapsible className="w-full">
+                    {processCustomerData.displaySelection.map(oneItem => (
+                      <AccordionItem key={oneItem.id} value={`item-${oneItem.id}`} className="border-b border-gray-200">
+                        <AccordionTrigger 
+                          className="text-sm font-medium text-white hover:text-blue-200 relative bg-cover bg-center bg-no-repeat p-4 rounded-md transition-all duration-300 ease-in-out overflow-hidden"
+                          style={{
+                            backgroundImage: `url('${oneItem.productionLogo}')`,
+                            opacity: 0.8
+                          }}
+                        >
+                          <span className="text-shadow">{oneItem.productionLine}</span>
+                        </AccordionTrigger>
+                        <AccordionContent className="mt-2 text-gray-600">
+                          {oneItem.productsByProductionLine.map(oneObject => (
+                            oneObject.text ? (
+                              <p key={oneObject.id} className="py-1">{oneObject.text}</p>
+                            ) : (
+                              <div key={oneObject.id} className="py-2">
+                                <p className="font-medium">{oneObject.name}</p>
+                                <hr className="my-2" />
+                                <p className="text-sm">{oneObject.description}</p>
+                              </div>
+                            )
+                          ))}
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                </CardContent>
+              </Card>
+            </section>
+          </article>
+        </div>
+        <div className="flex-1 md:ml-6">
+          <article className="p-6 bg-white rounded-lg shadow-md">
+            <Card className="bg-white rounded-lg shadow-md">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold text-gray-800">Customer Data</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <Tabs defaultValue="table" className="space-y-6">
                   <TabsList className="flex border-b border-gray-200">
                     <TabsTrigger value="table" className="px-4 py-2 text-sm font-medium text-gray-700 rounded-t-md hover:bg-blue-100 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 ease-in-out">Orders</TabsTrigger>
                     <TabsTrigger value="chart" className="px-4 py-2 text-sm font-medium text-gray-700 rounded-t-md hover:bg-blue-100 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 ease-in-out">Charts</TabsTrigger>
                   </TabsList>
-                  <TabsContent value="table" className="bg-gray-50 p-6 rounded-b-lg shadow-md">
+                  <TabsContent value="table" className="bg-gray-50 p-6 rounded-b-lg shadow-inner">
                     <div className="flex items-center py-4">
                       <Input
                         placeholder="Filter by name"
                         value={table.getColumn("productName")?.getFilterValue() || ""}
                         onChange={(event) =>
-                          table.getColumn("productName").setFilterValue(event.target.value)
+                        table.getColumn("productName").setFilterValue(event.target.value)
                         }
                         className="max-w-sm border border-gray-300 rounded-lg px-4 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
-                    <OrderTable table={table} />
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <OrderTable table={table} />
+                    </Suspense>
                   </TabsContent>
-                  <TabsContent value="chart" className="bg-gray-50 p-6 rounded-b-lg shadow-md">
-                    <OrderChart chartData={showChartData} />
+                  <TabsContent value="chart" className="bg-gray-50 p-6 rounded-b-lg shadow-inner">
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <OrderChart chartData={processCustomerData.chartData} />
+                    </Suspense>
                   </TabsContent> 
                 </Tabs>
-              </article>
-            </div>
-          </div>
-        )
-      )}
+              </CardContent>
+            </Card>
+          </article>
+        </div>
+      </div>
     </div>
   )
 }

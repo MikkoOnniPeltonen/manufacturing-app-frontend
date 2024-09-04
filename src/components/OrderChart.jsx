@@ -1,6 +1,5 @@
 
-import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
-import { ChartContainer } from '@/components/ui/chart'
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts"
 
 function OrderChart({ chartData }) {
 
@@ -16,21 +15,23 @@ function OrderChart({ chartData }) {
       }
 
   return (
-    <ChartContainer config={chartConfig} className="min-h-[200px] w-full p-4 bg-white rounded-lg shadow-md">
-        <BarChart accessibilityLayer data={chartData}>
-            <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-gray-200" />
+    <ResponsiveContainer config={chartConfig} className="min-h-[200px] w-full p-4 bg-white rounded-lg shadow-md">
+        <BarChart accessibilityLayer data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
             <XAxis
                 dataKey="productionLine"
-                tickLine={false}
-                tickMargin={10}
-                axisLine={false}
-                tickFormatter={(value) => value.slice(0, 3)}
+                tickFormatter={(value) => value.slice(0, 15)}
+                interval={0}
+                tick={{ fontSize: 12, width: 100, wordWrap: 'break-word' }}
                 className="text-sm text-gray-700"
             />
-            <Bar dataKey="average" fill={chartConfig.average.color} radius={4} />
-            <Bar dataKey="orders" fill={chartConfig.orders.color} radius={4} />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="average" name={chartConfig.average.label} fill={chartConfig.average.color}  />
+            <Bar dataKey="orders" name={chartConfig.orders.label} fill={chartConfig.orders.color} />
         </BarChart>
-    </ChartContainer>
+    </ResponsiveContainer>
   )
 }
 

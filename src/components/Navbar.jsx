@@ -13,28 +13,52 @@ import { useParams, Link, useLocation } from 'react-router-dom'
 
 function Navbar() {
 
-  const [currentCustomer, setCurrentCustomer] = useState(null)
+  const [customerName, setCustomerName] = useState('')
 
   const { customerId } = useParams()
   const location = useLocation()
 
   useEffect(() => {
 
-    axios.get(`${import.meta.env.VITE_BACKEND_URL}/customers/${customerId}`)
-    .then((foundCustomer) => {
-      setCurrentCustomer(foundCustomer.data)
-    })
-    .catch((err) => {
-      console.log(err)
-    })
-    
+    if (customerId) {
+      axios.get(`${import.meta.env.VITE_BACKEND_URL}/customers/${customerId}`)
+      .then((foundCustomer) => {
+        setCustomerName(foundCustomer.data.name)
+        console.log('name of customer: ', foundCustomer.data.name)
+      })
+      .catch((err) => {
+        console.error('Error fetching customer: ', err)
+        setCustomerName('Customer')
+      })
+    } else {
+      setCustomerName('')
+    }
   }, [customerId])
 
   console.log('customer id is: ', customerId)
-  console.log(currentCustomer)
+  console.log(customerName)
   
-
   const pathSegments = location.pathname.split('/').filter(Boolean)
+  const pathLength = pathSegments.length
+  const isEditPage = pathSegments.includes('edit')
+
+  const renderAllCustomers = () => {
+    if (pathLength === 1) {
+      return (
+        <BreadcrumbPage>All Customers</BreadcrumbPage>
+      )
+    } else if (isEditPage) {
+      return (
+        <BreadcrumbEllipsis />
+      )
+    } else {
+      return (
+        <Link to='/customers'>All Customers</Link>
+      )
+      
+    }
+  }
+  
   console.log(pathSegments)
 
   return (
@@ -54,40 +78,29 @@ function Navbar() {
 
           {pathSegments.includes('customers') && (
             <>
-              {customerId ? (
+              <BreadcrumbItem>
+                {renderAllCustomers()}
+              </BreadcrumbItem>
+              {pathLength >= 2 && (
                 <>
-                  {pathSegments.includes('edit') ? (
-                    <>
-                      <BreadcrumbEllipsis />
-                      <BreadcrumbSeparator />
-                      <BreadcrumbItem>
-                        <Link to={`/customers/${customerId}`}>
-                        {currentCustomer.name}
-                        </Link>
-                      </BreadcrumbItem>
-                    </> 
-                  ) : (
-                    <BreadcrumbItem>
-                      <Link to='/customers'>All Customers</Link>
-                    </BreadcrumbItem>
-                  )}
                   <BreadcrumbSeparator />
                   <BreadcrumbItem>
-                    <BreadcrumbPage>{pathSegments.includes('edit') ? 'Edit' : currentCustomer.name}</BreadcrumbPage>
+                    {pathLength === 2 ? (
+                      <BreadcrumbPage>
+                        {pathSegments[1] === 'create' ? 'Create' : customerName}
+                      </BreadcrumbPage>
+                    ) : (
+                      <Link to={'customers/${customerId'}>{customerName}</Link>
+                    )}
                   </BreadcrumbItem>
                 </>
-              ) : (
+              )}
+
+              {isEditPage && (
                 <>
-                  {pathSegments.includes('create') && (
-                    <>
-                      <BreadcrumbItem>
-                        <Link to='/customers'>All Customers</Link>
-                      </BreadcrumbItem>
-                      <BreadcrumbSeparator />
-                    </>
-                  )}
+                  <BreadcrumbSeparator />
                   <BreadcrumbItem>
-                    <BreadcrumbPage>{pathSegments.includes('create') ? 'Create' : 'All Customers'}</BreadcrumbPage>
+                    <BreadcrumbPage>Edit</BreadcrumbPage>
                   </BreadcrumbItem>
                 </>
               )}
