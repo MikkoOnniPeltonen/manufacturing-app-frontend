@@ -107,7 +107,7 @@ function AllCustomersPage() {
                 <Button onClick={sortBySales} className="bg-blue-500 text-white hover:bg-blue-600 transition-all duration-300 shadow-md">Sort by Sales</Button>
               </div>
             </div>
-            <Table className="min-w-full border-collapse">
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Brand Logo</TableHead>

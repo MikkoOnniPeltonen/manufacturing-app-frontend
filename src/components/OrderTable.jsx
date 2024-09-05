@@ -54,7 +54,7 @@ function OrderTable({ table }) {
                 </TableBody>
                 <TableFooter>
                     <TableRow className="bg-blue-50">
-                        <TableCell colSpan={4} className="px-6 py-4 text-sm font-semibold text-gray-700">Total</TableCell>
+                        <TableCell colSpan={4} className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Total</TableCell>
                         <TableCell className="px-6 py-4 text-right text-sm font-medium text-gray-900">
                             {rows.reduce((acc, row) => acc + (row.original.quantity || 0), 0)}
                         </TableCell>

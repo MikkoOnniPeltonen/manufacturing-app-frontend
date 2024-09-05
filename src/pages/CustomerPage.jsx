@@ -202,16 +202,22 @@ function CustomerPage() {
         <div className="flex-1 lg:w-1/2">
           <article className="mb-6 h-full flex flex-col">
             <Card className="shadow-lg rounded-lg overflow-hidden border border-gray-200 bg-white mb-6 flex-grow">
-              <CardHeader className="p-4 border-b border-gray-200">
-                <CardTitle className="text-lg font-semibold text-gray-800">{currentCustomer.name}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 flex flex-col h-full">
-                <div className="flex-grow flex flex-col justify-between">
-                  <img src={currentCustomer.customer_logoURL} alt={`pic not loading`} className="w-48 h-48 object-contain mx-auto mb-4" />
-                  <div className="text-right">
+              <CardHeader className="p-4 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center w-full">
+                  <CardTitle className="text-lg font-semibold text-gray-800 flex-grow">{currentCustomer.name}</CardTitle>
+                  <div className="text-right ml-4">
                     <p className="text-sm text-gray-600">Contact: {currentCustomer.contact}</p>
                     <p className="text-sm text-gray-600">Address: {currentCustomer.address}</p>
                   </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 flex flex-col items-center relative overflow-hidden">
+                <div className="w-full h-64 relative overflow-hidden">
+                  <img 
+                    src={currentCustomer.customer_logoURL} 
+                    alt={`pic not loading`} 
+                    className="absolute -left-[25%] -top-[5%] -bottom-[5%] w-[95%] h-[105%] object-contain" 
+                  />
                 </div>
               </CardContent>
             </Card>
