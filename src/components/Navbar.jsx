@@ -9,22 +9,26 @@ import {
 
 import { useState, useEffect } from "react"
 import axios from 'axios'
-import { useParams, Link, useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 function Navbar() {
 
   const [customerName, setCustomerName] = useState('')
 
-  const { customerId } = useParams()
   const location = useLocation()
+
+  const extractCustomerId = (path) => {
+    const match = path.match(/\/customers\/(\d+)/)
+    return match ? match[1] : null
+  }
 
   useEffect(() => {
 
+    const customerId = extractCustomerId(location.pathname)
     if (customerId) {
       axios.get(`${import.meta.env.VITE_BACKEND_URL}/customers/${customerId}`)
-      .then((foundCustomer) => {
-        setCustomerName(foundCustomer.data.name)
-        console.log('name of customer: ', foundCustomer.data.name)
+      .then((response) => {
+        setCustomerName(response.data.name)
       })
       .catch((err) => {
         console.error('Error fetching customer: ', err)
@@ -33,10 +37,7 @@ function Navbar() {
     } else {
       setCustomerName('')
     }
-  }, [customerId])
-
-  console.log('customer id is: ', customerId)
-  console.log(customerName)
+  }, [location])
   
   const pathSegments = location.pathname.split('/').filter(Boolean)
   const pathLength = pathSegments.length
@@ -58,8 +59,6 @@ function Navbar() {
       
     }
   }
-  
-  console.log(pathSegments)
 
   return (
     <header>
@@ -90,7 +89,7 @@ function Navbar() {
                         {pathSegments[1] === 'create' ? 'Create' : customerName}
                       </BreadcrumbPage>
                     ) : (
-                      <Link to={'customers/${customerId'}>{customerName}</Link>
+                      <Link to={`customers/${pathSegments[1]}`}>{customerName}</Link>
                     )}
                   </BreadcrumbItem>
                 </>

@@ -91,7 +91,6 @@ function ManagerViewPage() {
 
   // CHECK IDENTICAL LISTS
   const areArraysIdentical = useCallback((array1, array2) => {
-
     if (array1.length !== array2.length) {
       return false
     }
@@ -107,32 +106,17 @@ function ManagerViewPage() {
 
   
   // HANDLE EDIT
-  const handleEdit = useCallback(async () => {
-    const lineData = productionDataMap.get(selectedLineId)
-    if (!lineData || lineData.selectedItems.length > 0 || !lineData.productionLine.hasSales) {
-      return
-    }
-
-    try {
-      await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/productionLines/${selectedLineId}`, {
-        hasSales: false
-      })
-      const updatedLines = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/productionLines`)
-    
-      setProductionDataMap(prevMap => {
-        const newMap = new Map(prevMap)
-        updatedLines.data.forEach(line => {
-          const existingData = newMap.get(line.id)
-          newMap.set(line.id, { ...existingData, productionLine: line })
-        })
-        const lineData = newMap.get(selectedLineId)
-        newMap.set(selectedLineId, { ...lineData, selectedItems: lineData.showSales })
+  const handleEdit = useCallback(() => {
+    setProductionDataMap(prevMap => {
+      const newMap = new Map(prevMap)
+      const lineData = newMap.get(selectedLineId)
+      if (!lineData || lineData.selectedItems.length > 0 || !lineData.productionLine.hasSales) {
         return newMap
-      })
-    } catch (error) {
-      console.error('Error in editing production line sales: ', error)
-    }
-  }, [productionDataMap, selectedLineId])
+      }
+      newMap.set(selectedLineId, { ...lineData, selectedItems: lineData.showSales })
+      return newMap
+    })
+  }, [selectedLineId])
 
 
   // HANDLE SAVE OF EDITED LIST
@@ -145,6 +129,10 @@ function ManagerViewPage() {
     setIsSaving(true)
 
     try {
+
+      await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/productionLines/${selectedLineId}`, {
+        hasSales: false
+      })
 
       const patchingResponse = await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/productions/${selectedLineId}`, {
         inProductionItems: lineData.selectedItems
@@ -161,7 +149,9 @@ function ManagerViewPage() {
         newMap.set(selectedLineId, {
           ...lineData, 
           inProductionItems: newProductionList.data.inProductionItems,
-          selectedItems: []
+          selectedItems: [],
+          productionItemCount: newProductionList.data.inProductionItems.length,
+          productionLine: { ...lineData.productionLine, hasSales: false }
         })
         return newMap
       })
@@ -176,14 +166,17 @@ function ManagerViewPage() {
 
   const processItems = useCallback(async (items) => {
     const lineData = productionDataMap.get(selectedLineId)
+    const totalItems = items.length
+    const processedItems = []
 
-    for (const item of items) {
+    for (let i = 0; i < totalItems; i++) {
+      const item = items[i]
       try {
         const timeToProcess = (item.quantity / lineData.productionLine.capacity) * 10000
         await new Promise(resolve => setTimeout(resolve, timeToProcess))
 
         await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/productions/${selectedLineId}`, {
-          inProductionItems: items.slice(1)
+          inProductionItems: items.slice(i + 1)
         })
 
         const customerResponse = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/customers/${item.customerId}`)
@@ -191,16 +184,48 @@ function ManagerViewPage() {
           delivered: [...customerResponse.data.delivered, { ...item, status: true }]
         })
 
+        processedItems.push({ ...item, status: true })
+
         setProductionDataMap(prevMap => {
           const newMap = new Map(prevMap)
           const lineData = newMap.get(selectedLineId)
-          newMap.set(selectedLineId, { ...lineData, inProductionItems: items.slice(1) })
+          newMap.set(selectedLineId, {
+            ...lineData, 
+            inProductionItems: items.slice(i + 1),
+            productionItemCount: totalItems
+          })
           return newMap
         })
 
       } catch (error) {
         console.error('Error in processing item: ', error)
         break
+      }
+    }
+
+    if (processedItems.length === totalItems) {
+      try {
+
+        await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/sales/${selectedLineId}`, {
+          listedItems: []
+        })
+
+        setProductionDataMap(prevMap => {
+          const newMap = new Map(prevMap)
+          const lineData = newMap.get(selectedLineId)
+          newMap.set(selectedLineId, {
+            ...lineData,
+            inProductionItems: [],
+            showSales: []
+          })
+          return newMap
+        })
+
+        const currentCount = parseInt(localStorage.getItem('newSalesCount'), 10) || 0
+        const updatedCount = Math.max(0, currentCount - totalItems)
+        localStorage.setItem('newSalesCount', updatedCount.toString())
+      } catch (error) {
+        console.error('Error clearing sales items: ', error)
       }
     }
     setIsProcessing(false)
@@ -249,7 +274,7 @@ function ManagerViewPage() {
               <Card className="bg-blue-100 border-blue-300">
                 <CardHeader className="bg-blue-300">{productionLine?.name} in progress</CardHeader>
                 <CardContent className="p-4">
-                  <p>{inProductionItems.length} / {productionItemCount}</p>
+                  <p>{productionItemCount - inProductionItems.length} / {productionItemCount}</p>
                 </CardContent>
               </Card>
             )}

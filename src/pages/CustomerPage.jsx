@@ -198,29 +198,29 @@ function CustomerPage() {
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
-      <div className="flex flex-col md:flex-row gap-6">
-        <div className="flex-1 md:mr-6">
-          <article className="mb-6">
-            <Card className="shadow-lg rounded-lg overflow-hidden border border-gray-200 bg-white">
+      <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex-1 lg:w-1/2">
+          <article className="mb-6 h-full flex flex-col">
+            <Card className="shadow-lg rounded-lg overflow-hidden border border-gray-200 bg-white mb-6 flex-grow">
               <CardHeader className="p-4 border-b border-gray-200">
                 <CardTitle className="text-lg font-semibold text-gray-800">{currentCustomer.name}</CardTitle>
               </CardHeader>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-4">
-                  <img src={currentCustomer.customer_logoURL} alt={`pic not loading`} className="w-16 h-16 rounded-full border" />
-                  <div className="">
+              <CardContent className="p-4 flex flex-col h-full">
+                <div className="flex-grow flex flex-col justify-between">
+                  <img src={currentCustomer.customer_logoURL} alt={`pic not loading`} className="w-48 h-48 object-contain mx-auto mb-4" />
+                  <div className="text-right">
                     <p className="text-sm text-gray-600">Contact: {currentCustomer.contact}</p>
                     <p className="text-sm text-gray-600">Address: {currentCustomer.address}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <section className="mt-6">
-              <Card className="shadow-lg rounded-lg overflow-hidden border border-gray-200 bg-white">
+            <section className="flex-grow">
+              <Card className="shadow-lg rounded-lg overflow-hidden border border-gray-200 bg-white h-full">
                 <CardHeader className="p-4 border-b border-gray-200">
                   <CardTitle className="text-lg font-semibold text-gray-800">Selected Products</CardTitle>
                 </CardHeader>
-                <CardContent className="p-4">
+                <CardContent className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(100% - 60 px)' }}>
                   <Accordion type="single" collapsible className="w-full">
                     {processCustomerData.displaySelection.map(oneItem => (
                       <AccordionItem key={oneItem.id} value={`item-${oneItem.id}`} className="border-b border-gray-200">
@@ -254,19 +254,19 @@ function CustomerPage() {
             </section>
           </article>
         </div>
-        <div className="flex-1 md:ml-6">
-          <article className="p-6 bg-white rounded-lg shadow-md">
-            <Card className="bg-white rounded-lg shadow-md">
+        <div className="flex-1 lg:w-1/2">
+          <article className="bg-white rounded-lg shadow-md h-full">
+            <Card className="bg-white rounded-lg shadow-md h-full">
               <CardHeader>
                 <CardTitle className="text-xl font-semibold text-gray-800">Customer Data</CardTitle>
               </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="table" className="space-y-6">
+              <CardContent className="h-[calc(100%-60px)]">
+                <Tabs defaultValue="table" className="h-full flex flex-col">
                   <TabsList className="flex border-b border-gray-200">
                     <TabsTrigger value="table" className="px-4 py-2 text-sm font-medium text-gray-700 rounded-t-md hover:bg-blue-100 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 ease-in-out">Orders</TabsTrigger>
                     <TabsTrigger value="chart" className="px-4 py-2 text-sm font-medium text-gray-700 rounded-t-md hover:bg-blue-100 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200 ease-in-out">Charts</TabsTrigger>
                   </TabsList>
-                  <TabsContent value="table" className="bg-gray-50 p-6 rounded-b-lg shadow-inner">
+                  <TabsContent value="table" className="bg-gray-50 p-6 rounded-b-lg shadow-inner flex-grow overflow-auto">
                     <div className="flex items-center py-4">
                       <Input
                         placeholder="Filter by name"
@@ -281,9 +281,9 @@ function CustomerPage() {
                       <OrderTable table={table} />
                     </Suspense>
                   </TabsContent>
-                  <TabsContent value="chart" className="bg-gray-50 p-6 rounded-b-lg shadow-inner">
+                  <TabsContent value="chart" className="bg-gray-50 p-6 rounded-b-lg shadow-inner flex-grow">
                     <Suspense fallback={<LoadingSpinner />}>
-                      <OrderChart chartData={processCustomerData.chartData} />
+                      <OrderChart chartData={processCustomerData.chartData} productionLines={dataMap.get('productionLines')} />
                     </Suspense>
                   </TabsContent> 
                 </Tabs>

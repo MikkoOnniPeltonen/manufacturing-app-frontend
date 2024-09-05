@@ -26,15 +26,20 @@ function HomePage() {
 
   const fetchInitialData = async () => {
     try {
-      const [customersResponse, salesResponse] = await Promise.all([
+      const [customersResponse, salesResponse, productionLinesResponse] = await Promise.all([
         axios.get(`${import.meta.env.VITE_BACKEND_URL}/customers`),
-        axios.get(`${import.meta.env.VITE_BACKEND_URL}/sales`)
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/sales`),
+        axios.get(`${import.meta.env.VITE_BACKEND_URL}/productionLines`)
       ])
+
+      const storedNewSalesCount = localStorage.getItem('newSalesCount')
+      const newSalesCount = storedNewSalesCount ? parseInt(storedNewSalesCount, 10) : calculateNewSalesCount(salesResponse.data)
 
       setDataMap(new Map([
         ['customers', customersResponse.data],
         ['sales', salesResponse.data],
-        ['newSalesCount', calculateNewSalesCount(salesResponse.data)]
+        ['productionLines', productionLinesResponse.data],
+        ['newSalesCount', newSalesCount]
       ]))
     } catch (error) {
       console.error('Error fetching initial data: ', error)
@@ -138,14 +143,17 @@ function HomePage() {
         axios.get(`${import.meta.env.VITE_BACKEND_URL}/sales`),
         axios.get(`${import.meta.env.VITE_BACKEND_URL}/productionLines`)
       ])
+
+      const newSalesCount = calculateNewSalesCount(updatedSalesResponse.data)
  
       setDataMap(new Map([
         ...dataMap,
         ['sales', updatedSalesResponse.data],
         ['productionLines', updatedProductionLinesResponse.data],
-        ['newSalesCount', calculateNewSalesCount(updatedSalesResponse.data)]
+        ['newSalesCount', newSalesCount]
       ]))
  
+      localStorage.setItem('newSalesCount', newSalesCount)
       const allUpdatedSalesItems = updatedSalesResponse.data.flatMap(sale => sale.listedItems)
  
  

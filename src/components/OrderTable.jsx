@@ -1,6 +1,3 @@
-
-
-
 import {
     Table,
     TableBody,
@@ -20,9 +17,9 @@ function OrderTable({ table }) {
     const hasRows = rows.length > 0
 
   return (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto h-[400px]">
             <Table className="min-w-full divide-y divide-gray-200 bg-white shadow-sm rounded-lg">
-                <TableHeader className="bg-blue-50">
+                <TableHeader className="bg-blue-50 sticky top-0">
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
                             {headerGroup.headers.map((header) => (
